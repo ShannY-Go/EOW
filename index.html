@@ -466,6 +466,14 @@
             .view-section.active > *, .view-section.active h1, .view-section.active h2, .view-section.active h3, .view-section.active h4 { opacity: 1 !important; }
         }
 
+        /* ---------- Кнопка входа через Steam ---------- */
+        .steam-login-btn {
+            background: linear-gradient(135deg, #171a21 0%, #1b2838 45%, #2a475e 100%);
+            border: 1px solid rgba(102, 192, 244, 0.35);
+            box-shadow: 0 10px 26px -12px rgba(102, 192, 244, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .steam-login-btn:hover { border-color: rgba(102, 192, 244, 0.7); box-shadow: 0 14px 32px -12px rgba(102, 192, 244, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12); transform: translateY(-1px); }
+
     </style>
 </head>
 <body class="selection:bg-sunset-500/30 selection:text-white">
@@ -565,7 +573,8 @@
 
                 <div class="flex items-center gap-1 sm:gap-2 shrink-0">
                     <button id="headerProfileBtn" type="button" onclick="handleHeaderProfileClick()" title="Личный профиль" class="h-10 px-3 sm:px-4 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-sunset-200 flex items-center justify-center gap-2 max-w-[190px]">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-sunset-400" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+                        <img id="headerProfileAvatar" alt="" referrerpolicy="no-referrer" class="hidden w-6 h-6 -ml-1.5 rounded-full object-cover ring-1 ring-sunset-400/40">
+                        <span id="headerProfileIcon" class="inline-flex"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 shrink-0 text-sunset-400" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg></span>
                         <span id="headerProfileText" class="truncate hidden sm:inline">Войти в профиль</span>
                     </button>
                     <button id="headerSwitchAccountBtn" type="button" onclick="openProfileModal()" title="Сменить или привязать аккаунт Steam" aria-label="Сменить аккаунт Steam" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sunset-300 hover:text-white items-center justify-center shrink-0 hidden max-sm:!hidden">
@@ -2024,21 +2033,23 @@
         <section id="tab-profile" class="view-section space-y-6">
             <div class="soft-glass rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-sunset-400/25">
                 <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-rosewood-500 to-sunset-500 p-0.5">
-                        <div class="w-full h-full rounded-[14px] bg-dusk-950 flex items-center justify-center">
-                            <svg class="w-8 h-8 text-sunset-300 fill-current" viewBox="0 0 24 24"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0z"></path></svg>
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-rosewood-500 to-sunset-500 p-0.5 shrink-0">
+                        <div class="relative w-full h-full rounded-[14px] bg-dusk-950 flex items-center justify-center overflow-hidden">
+                            <img id="profilePageAvatar" alt="" referrerpolicy="no-referrer" class="hidden absolute inset-0 w-full h-full object-cover"><svg id="profilePageAvatarFallback" class="w-8 h-8 text-sunset-300 fill-current" viewBox="0 0 24 24"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0z"></path></svg>
                         </div>
                     </div>
                     <div>
                         <span id="profileClearanceBadge" class="hidden"></span>
                         <span id="profileOwnerBadge" class="hidden"></span>
                         <span id="profileAdminBadge" class="hidden"></span>
-                        <h2 id="profilePageUsername" class="font-display font-bold text-2xl sm:text-3xl text-white">Кроко Shanny</h2>
+                        <div id="profileRoleBadges" class="flex flex-wrap items-center gap-1.5 mb-1.5"></div>
+                        <h2 id="profilePageUsername" class="font-display font-bold text-2xl sm:text-3xl text-white">Гость</h2>
+                        <div id="profilePageSteamId" class="text-[11px] font-mono text-sunset-300/75 mt-1"></div>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
                     <button onclick="openProfileModal()" class="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-sunset-200 text-xs font-medium flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="repeat" aria-hidden="true" class="lucide lucide-repeat w-3.5 h-3.5 text-sunset-400"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg> Сменить аккаунт
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="repeat" aria-hidden="true" class="lucide lucide-repeat w-3.5 h-3.5 text-sunset-400"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg> Аккаунт Steam
                     </button>
                     <button onclick="unlinkSteamAccount()" class="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-rosewood-500/20 text-rosewood-300 text-xs font-medium flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="log-out" aria-hidden="true" class="lucide lucide-log-out w-3.5 h-3.5"><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg> Выйти
@@ -3024,8 +3035,8 @@
                     <!-- Список игроков слева -->
                     <div class="lg:col-span-7 soft-glass rounded-3xl p-5 sm:p-6 space-y-3">
                         <div class="flex items-center justify-between text-xs font-mono text-sunset-300 px-1">
-                            <span>ИГРОКИ НА СЕРВЕРЕ И ПОРТАЛЕ</span>
-                            <span id="privPlayersCountLabel">7 найдено</span>
+                            <span>ИГРОКИ, ВОШЕДШИЕ ЧЕРЕЗ STEAM</span>
+                            <span id="privPlayersCountLabel">0 найдено</span>
                         </div>
                         <div id="privilegesPlayersListContainer" class="space-y-2.5 max-h-[540px] overflow-y-auto custom-dark-scroll pr-1">
                     <div onclick="selectPlayerForPrivileges('ShannyyyY')" class="cursor-pointer p-4 rounded-2xl transition-all bg-dusk-950/75 border border-white/10 hover:border-white/25 flex items-center justify-between gap-3">
@@ -4271,37 +4282,44 @@
         </div>
     </div>
 
-    <div id="profileModal" class="fixed inset-0 z-50 items-center justify-center bg-dusk-950/80 backdrop-blur-md p-4 hidden">
+    <div id="profileModal" onclick="if(event.target === this) closeProfileModal()" class="fixed inset-0 z-50 items-center justify-center bg-dusk-950/80 backdrop-blur-md p-4 hidden">
         <div class="soft-glass rounded-3xl max-w-md w-full p-7 space-y-5">
             <div class="flex items-center justify-between border-b border-white/10 pb-3">
                 <span class="text-xs font-medium text-sunset-400">Личный кабинет · Steam</span>
-                <button onclick="closeProfileModal()" class="text-sunset-200/70 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x w-5 h-5"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
-                    <div class="p-5 rounded-2xl bg-dusk-950/70 border border-white/10 space-y-4">
-                    <label class="block text-xs text-sunset-200/80">Выберите профиль Steam для входа:</label>
-                    <select id="steamAccountSelector" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
-                        <option value="ShannyyyY">ShannyyyY (Овнер проекта)</option>
-                        <option value="Tenkara-">Tenkara- (Овнер проекта)</option>
-                        <option value="CmdrCody">CC | 2224 | Cody (Командир Штурмового Корпуса)</option>
-                        <option value="SiteAdmin">Офицер-Ивентолог (Админ + Командир ARF)</option>
-                        <option value="GuestClone">SGT Lork (Обычный игрок)</option>
-                    </select>
-                    <button onclick="startSteamOpenIdAuth()" class="w-full py-3 px-5 rounded-xl bg-[#171a21] hover:bg-[#2a475e] text-white font-semibold text-xs flex items-center justify-center gap-3">
-                        <span>Войти через Steam</span>
-                    </button>
-                </div>
+                <button type="button" onclick="closeProfileModal()" aria-label="Закрыть" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-sunset-200/70 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="w-4 h-4" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
             </div>
-            <div id="steamConnectedView" class="hidden space-y-4">
-                <div class="p-4 rounded-2xl bg-dusk-950/70 border border-white/10 space-y-2.5">
-                    <label class="block text-xs text-sunset-200/80">Быстрая смена аккаунта для проверки прав:</label>
-                    <select id="steamAccountSelectorConnected" class="w-full px-3.5 py-2 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
-                        <option value="ShannyyyY">ShannyyyY (Овнер проекта)</option>
-                        <option value="Tenkara-">Tenkara- (Овнер проекта)</option>
-                        <option value="CmdrCody">CC | 2224 | Cody (Командир Штурмового Корпуса)</option>
-                        <option value="SiteAdmin">Офицер-Ивентолог (Админ + Командир ARF)</option>
-                        <option value="GuestClone">SGT Lork (Обычный игрок)</option>
-                    </select>
-                    <button onclick="switchConnectedSteamAccount()" class="w-full py-2.5 rounded-xl bg-white/10 text-white font-medium text-xs">Переключить аккаунт</button>
+
+            <div id="steamDisconnectedView" class="space-y-4">
+                <div class="space-y-1.5">
+                    <h3 class="font-display font-bold text-xl text-white">Привяжите аккаунт Steam</h3>
+                    <p class="text-xs text-sunset-200/75 leading-relaxed">Вход выполняется на официальной странице Steam — пароль сайт не видит. Мы получаем только публичные данные: SteamID, ник и аватар.</p>
                 </div>
+                <button type="button" onclick="startSteamOpenIdAuth()" class="steam-login-btn w-full py-3.5 px-5 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-3">
+                    <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0z"></path></svg>
+                    <span>Войти через Steam</span>
+                </button>
+                <p id="steamAuthNotConfiguredNote" class="hidden text-[11px] text-amber-300/90 leading-relaxed">Вход ещё не подключён: владелец сайта должен указать адрес сервера авторизации.</p>
+            </div>
+
+            <div id="steamConnectedView" class="hidden space-y-4">
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-dusk-950/70 border border-white/10">
+                    <div class="relative w-14 h-14 rounded-2xl overflow-hidden bg-dusk-900 border border-white/10 shrink-0 flex items-center justify-center text-sunset-300">
+                        <img id="profileModalAvatar" alt="" referrerpolicy="no-referrer" class="hidden absolute inset-0 w-full h-full object-cover">
+                        <svg id="profileModalAvatarFallback" class="w-7 h-7 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0z"></path></svg>
+                    </div>
+                    <div class="min-w-0">
+                        <div id="profileModalRoleBadges" class="flex flex-wrap gap-1.5 mb-1"></div>
+                        <div id="profileModalName" class="font-display font-bold text-lg text-white truncate"></div>
+                        <div id="profileModalSteamId" class="text-[11px] font-mono text-sunset-300/75 truncate"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button type="button" onclick="closeProfileModal(); switchTab('profile');" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sunset-200 text-xs font-medium">Мой профиль</button>
+                    <a id="profileModalSteamLink" href="https://steamcommunity.com/" target="_blank" rel="noopener noreferrer" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sunset-200 text-xs font-medium text-center">Профиль Steam ↗</a>
+                </div>
+                <button type="button" onclick="unlinkSteamAccount()" class="w-full py-2.5 rounded-xl bg-rosewood-500/15 hover:bg-rosewood-500/25 border border-rosewood-400/30 text-rosewood-300 text-xs font-medium">Выйти из профиля</button>
             </div>
         </div>
     </div>
@@ -5048,66 +5066,154 @@
             window.addEventListener('mouseup', () => { isDragging = false; vp.classList.remove('dragging'); });
         }
 
+        // ===================================================================
+        // ВХОД ЧЕРЕЗ STEAM — настоящая привязка аккаунта
+        // Сервер авторизации: Cloudflare Worker (файл eow-auth-worker.js).
+        // Вставьте сюда адрес своего воркера, например:
+        //   const EOW_AUTH_API = 'https://eow-auth.ВАШ-ЛОГИН.workers.dev';
+        // ===================================================================
+        const EOW_AUTH_API = 'https://eow-auth.shanny-games-yt.workers.dev';
+        const EOW_TOKEN_KEY = 'eow_auth_token';
+        const EOW_USER_CACHE_KEY = 'eow_auth_user';
+        const EOW_AUTH = { user: null, ready: false };
+
+        // Овнеры проекта (SteamID64). Окончательно права проверяет сервер.
         const HARDCODED_OWNER_ACCOUNTS = Object.freeze({
-            'ShannyyyY': { customId: 'ShannyyyY', profileUrl: 'https://steamcommunity.com/id/ShannyyyY/', displayName: 'Кроко Shanny', role: 'owner' },
-            'Tenkara-': { customId: 'Tenkara-', profileUrl: 'https://steamcommunity.com/id/Tenkara-/', displayName: 'Tenkara-', role: 'owner' }
+            '76561198977932723': { steamId2: 'STEAM_0:1:508833497' }
         });
 
-        const STEAM_ACCOUNTS_DIRECTORY = {
-            'ShannyyyY': { customId: 'ShannyyyY', steamId: 'STEAM_0:1:48291042', profileUrl: 'https://steamcommunity.com/id/ShannyyyY/', displayName: 'Кроко Shanny' },
-            'Tenkara-': { customId: 'Tenkara-', steamId: 'STEAM_0:0:51920411', profileUrl: 'https://steamcommunity.com/id/Tenkara-/', displayName: 'Tenkara-' },
-            'CmdrCody': { customId: 'CmdrCody', steamId: 'STEAM_0:1:33104912', profileUrl: 'https://steamcommunity.com/id/CmdrCody/', displayName: 'CC | 2224 | Cody' },
-            'SiteAdmin': { customId: 'SiteAdmin', steamId: 'STEAM_0:1:77419022', profileUrl: 'https://steamcommunity.com/id/SiteAdmin/', displayName: 'Офицер-Ивентолог' },
-            'GuestClone': { customId: 'GuestClone', steamId: 'STEAM_0:0:99123401', profileUrl: 'https://steamcommunity.com/id/GuestClone/', displayName: 'SGT | 1234 | Lork' }
+        // Игроки, которые входили на сайт через Steam (загружается с сервера для вкладки «Выдача привилегий»)
+        let serverPlayersRegistry = [];
+
+        const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+        const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* приватный режим */ } };
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"'`]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch]));
+        }
+        const cleanNick = (n) => String(n || '').replace(/[<>"'`&\\]/g, '').trim() || 'Игрок Steam';
+
+        function playerRecordFromUser(u) {
+            return {
+                id: u.steamId64, steamId64: u.steamId64, steamId: u.steamId2,
+                nick: cleanNick(u.name), avatar: u.avatar || '', profileUrl: u.profileUrl || '',
+                role: u.role, serverPrivilege: u.serverPrivilege || 'Игрок (Без привилегий)',
+                siteAdmin: !!u.siteAdmin, siteCommander: !!u.siteCommander,
+                commanderCorps: u.commanderCorps || 'assault', adminPoints: u.adminPoints | 0,
+            };
+        }
+        const GUEST_RECORD = Object.freeze({
+            id: 'guest', steamId: '—', nick: 'Гость', role: 'guest', serverPrivilege: 'Игрок (Без привилегий)',
+            siteAdmin: false, siteCommander: false, commanderCorps: 'assault', adminPoints: 0,
+        });
+
+        function isCurrentUserHardcodedOwner() { return !!EOW_AUTH.user && EOW_AUTH.user.role === 'owner'; }
+        function isCurrentUserSiteAdmin() { const u = EOW_AUTH.user; return !!u && (u.role === 'owner' || !!u.siteAdmin); }
+        function isCurrentUserSiteCommander() { const u = EOW_AUTH.user; return !!u && (u.role === 'owner' || !!u.siteCommander); }
+        function canAccessAdminPanel() { return isCurrentUserSiteAdmin(); }
+        function getCurrentUserRecord() { return EOW_AUTH.user ? playerRecordFromUser(EOW_AUTH.user) : GUEST_RECORD; }
+        function currentUserId() { return EOW_AUTH.user ? EOW_AUTH.user.steamId64 : 'guest'; }
+        function currentUserName() { return EOW_AUTH.user ? cleanNick(EOW_AUTH.user.name) : 'Гость'; }
+
+        async function eowApi(path, opts = {}) {
+            if (!EOW_AUTH_API) { const e = new Error('not_configured'); e.status = 0; throw e; }
+            const headers = Object.assign({}, opts.headers || {});
+            const token = lsGet(EOW_TOKEN_KEY);
+            if (token) headers.Authorization = 'Bearer ' + token;
+            if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+            const res = await fetch(EOW_AUTH_API.replace(/\/+$/, '') + path, Object.assign({}, opts, { headers }));
+            let data = null;
+            try { data = await res.json(); } catch (e) { /* пустой ответ */ }
+            if (res.status === 401) setAuthUser(null, true);
+            if (!res.ok) { const err = new Error((data && data.error) || ('http_' + res.status)); err.status = res.status; throw err; }
+            return data;
+        }
+
+        function setAuthUser(user, clearToken = false) {
+            if (user) user = Object.assign({}, user, { name: cleanNick(user.name) });
+            EOW_AUTH.user = user || null;
+            lsSet(EOW_USER_CACHE_KEY, user ? JSON.stringify(user) : null);
+            if (clearToken) lsSet(EOW_TOKEN_KEY, null);
+            // старые ключи — для совместимости с остальными разделами сайта
+            lsSet('eow_linked_steamid', user ? user.steamId64 : null);
+            lsSet('eow_linked_steamname', user ? user.name : null);
+            lsSet('eow_linked_customid', user ? user.steamId64 : null);
+            lsSet('eow_linked_profileurl', user ? user.profileUrl : null);
+            if (user) {
+                const rec = playerRecordFromUser(user);
+                const i = serverPlayersRegistry.findIndex(p => p.id === rec.id);
+                if (i >= 0) Object.assign(serverPlayersRegistry[i], rec); else serverPlayersRegistry.unshift(rec);
+            } else {
+                serverPlayersRegistry = [];
+            }
+            updateSteamProfileModalState();
+        }
+
+        const STEAM_AUTH_ERRORS = {
+            cancelled: 'Вход через Steam отменён',
+            invalid_signature: 'Steam не подтвердил вход. Попробуйте ещё раз',
+            expired: 'Время входа истекло. Попробуйте ещё раз',
         };
 
-        // База игроков сервера для вкладки "Выдача привилегий" (с поддержкой и Админки, и Командерки + выбора формирования)
-        let serverPlayersRegistry = [
-            { id: 'ShannyyyY', nick: 'Кроко Shanny (ShannyyyY)', steamId: 'STEAM_0:1:48291042', serverPrivilege: 'Root / Основатель', siteAdmin: true, siteCommander: true, commanderCorps: 'assault', adminPoints: 1850 },
-            { id: 'Tenkara-', nick: 'Tenkara-', steamId: 'STEAM_0:0:51920411', serverPrivilege: 'Root / Основатель', siteAdmin: true, siteCommander: true, commanderCorps: 'coruscant_guard', adminPoints: 1600 },
-            { id: 'SiteAdmin', nick: 'Офицер-Ивентолог (Админ + Командир)', steamId: 'STEAM_0:1:77419022', serverPrivilege: 'Старший Ивентолог', siteAdmin: true, siteCommander: true, commanderCorps: 'recon', adminPoints: 420 },
-            { id: 'CmdrCody', nick: 'CC | 2224 | Cody', steamId: 'STEAM_0:1:33104912', serverPrivilege: 'VIP + Командир корпуса', siteAdmin: false, siteCommander: true, commanderCorps: 'assault', adminPoints: 110 },
-            { id: 'GuestClone', nick: 'SGT | 1234 | Lork', steamId: 'STEAM_0:0:99123401', serverPrivilege: 'Игрок (Без привилегий)', siteAdmin: false, siteCommander: false, commanderCorps: 'assault', adminPoints: 0 },
-            { id: 'MercAdenla', nick: 'Adenla Bellator [69th]', steamId: 'STEAM_0:0:64819204', serverPrivilege: 'Донат: Свободный наемник', siteAdmin: false, siteCommander: false, commanderCorps: 'recon', adminPoints: 0 },
-            { id: 'ArcFives', nick: 'ARC | 5555 | Fives', steamId: 'STEAM_0:1:81920344', serverPrivilege: 'Модератор сервера', siteAdmin: true, siteCommander: false, commanderCorps: 'medical', adminPoints: 295 }
-        ];
+        async function initSteamAuth() {
+            // после возврата со Steam токен приходит в адресе после #
+            const hash = location.hash || '';
+            const tok = hash.match(/eow_token=([^&]+)/);
+            const err = hash.match(/eow_error=([^&]+)/);
+            if (tok || err) history.replaceState(null, '', location.pathname + location.search);
+            if (tok) lsSet(EOW_TOKEN_KEY, decodeURIComponent(tok[1]));
+            if (err) showToast(STEAM_AUTH_ERRORS[decodeURIComponent(err[1])] || 'Не удалось войти через Steam');
 
-        function isCurrentUserHardcodedOwner() {
-            const customId = localStorage.getItem('eow_linked_customid');
-            const profileUrl = localStorage.getItem('eow_linked_profileurl');
-            if (!customId || !HARDCODED_OWNER_ACCOUNTS[customId]) return false;
-            return HARDCODED_OWNER_ACCOUNTS[customId].profileUrl === profileUrl;
+            // сразу показываем сохранённый профиль, затем сверяем его с сервером
+            const hasToken = !!lsGet(EOW_TOKEN_KEY);
+            let cached = null;
+            try { cached = hasToken ? JSON.parse(lsGet(EOW_USER_CACHE_KEY) || 'null') : null; } catch (e) { cached = null; }
+            if (cached) setAuthUser(cached); else setAuthUser(null, !hasToken);
+
+            if (hasToken && EOW_AUTH_API) {
+                try {
+                    const data = await eowApi('/api/me');
+                    setAuthUser(data.user);
+                    if (tok) { switchTab('profile'); showToast(`Steam привязан: ${cleanNick(data.user.name)}`); }
+                    if (isCurrentUserHardcodedOwner()) loadPlayersRegistry();
+                } catch (e) {
+                    if (e.status !== 401 && tok) showToast('Сервер авторизации недоступен, попробуйте позже');
+                }
+            }
+            EOW_AUTH.ready = true;
         }
 
-        function isCurrentUserSiteAdmin() {
-            if (isCurrentUserHardcodedOwner()) return true;
-            const customId = localStorage.getItem('eow_linked_customid');
-            if (!customId) return false;
-            const found = serverPlayersRegistry.find(p => p.id === customId);
-            return !!(found && found.siteAdmin);
+        async function loadPlayersRegistry() {
+            if (!isCurrentUserHardcodedOwner() || !EOW_AUTH_API) return;
+            try {
+                const data = await eowApi('/api/users');
+                serverPlayersRegistry = (data.users || []).map(playerRecordFromUser);
+                if (!serverPlayersRegistry.some(p => p.id === selectedPrivilegePlayerId)) {
+                    selectedPrivilegePlayerId = serverPlayersRegistry[0] ? serverPlayersRegistry[0].id : null;
+                }
+                renderPrivilegesPlayersList();
+                renderAdminRewardsShop();
+            } catch (e) {
+                if (e.status !== 401) showToast('Не удалось загрузить список игроков с сервера');
+            }
         }
 
-        function isCurrentUserSiteCommander() {
-            if (isCurrentUserHardcodedOwner()) return true;
-            const customId = localStorage.getItem('eow_linked_customid');
-            if (!customId) return false;
-            const found = serverPlayersRegistry.find(p => p.id === customId);
-            return !!(found && found.siteCommander);
+        async function pushPlayerPatch(p, patch) {
+            if (!EOW_AUTH_API || !p) return;
+            try {
+                const data = await eowApi('/api/users/' + encodeURIComponent(p.id), { method: 'POST', body: JSON.stringify(patch) });
+                Object.assign(p, playerRecordFromUser(data.user));
+                renderPrivilegesPlayersList();
+            } catch (e) {
+                showToast(e.message === 'owner_locked' ? 'Права Овнера изменить нельзя' : 'Сервер не сохранил изменение — список обновлён');
+                loadPlayersRegistry();
+            }
         }
 
-        function canAccessAdminPanel() {
-            return isCurrentUserHardcodedOwner() || isCurrentUserSiteAdmin();
-        }
-
-        function getCurrentUserRecord() {
-            const customId = localStorage.getItem('eow_linked_customid') || 'ShannyyyY';
-            return serverPlayersRegistry.find(p => p.id === customId) || serverPlayersRegistry[0];
-        }
 
         function handleHeaderProfileClick() {
             exitAdminBlock();
             exitCommanderBlock();
-            if (localStorage.getItem('eow_linked_steamid')) { switchTab('profile'); } else { openProfileModal(); }
+            if (EOW_AUTH.user) { switchTab('profile'); } else { openProfileModal(); }
         }
         function openProfileModal() {
             updateSteamProfileModalState();
@@ -5118,53 +5224,78 @@
             const modal = document.getElementById('profileModal');
             if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
         }
-        function startSteamOpenIdAuth(overrideKey = null) {
-            const selector = document.getElementById('steamAccountSelector');
-            const chosenKey = overrideKey || (selector ? selector.value : 'ShannyyyY');
-            const acc = STEAM_ACCOUNTS_DIRECTORY[chosenKey] || STEAM_ACCOUNTS_DIRECTORY['ShannyyyY'];
-            localStorage.setItem('eow_linked_steamid', acc.profileUrl);
-            localStorage.setItem('eow_linked_steamname', acc.displayName);
-            localStorage.setItem('eow_linked_customid', acc.customId);
-            localStorage.setItem('eow_linked_profileurl', acc.profileUrl);
-            updateSteamProfileModalState();
-            closeProfileModal();
-            switchTab('profile');
-            showToast(`Вы вошли как: ${acc.displayName}`);
+        const ROLE_BADGES = {
+            owner: ['ОВНЕР ПРОЕКТА', 'bg-sunset-500/25 border-sunset-400/45 text-sunset-200'],
+            admin: ['АДМИНИСТРАТОР', 'bg-sky-500/20 border-sky-400/40 text-sky-300'],
+            commander: ['КОМАНДИР', 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'],
+            player: ['ИГРОК', 'bg-white/5 border-white/15 text-sunset-200'],
+        };
+        function roleBadgesHtml(u) {
+            if (!u) return '';
+            const list = [];
+            if (u.role === 'owner') list.push('owner');
+            else { if (u.siteAdmin) list.push('admin'); if (u.siteCommander) list.push('commander'); if (!list.length) list.push('player'); }
+            return list.map(k => `<span class="px-2 py-0.5 rounded-md border text-[10px] font-mono tracking-wide ${ROLE_BADGES[k][1]}">${ROLE_BADGES[k][0]}</span>`).join('');
         }
-        function switchConnectedSteamAccount() {
-            const sel = document.getElementById('steamAccountSelectorConnected');
-            startSteamOpenIdAuth(sel ? sel.value : 'ShannyyyY');
-        }
-        function updateSteamProfileModalState() {
-            if (localStorage.getItem('eow_linked_steamid') && !localStorage.getItem('eow_linked_customid')) {
-                const defaultOwner = STEAM_ACCOUNTS_DIRECTORY['ShannyyyY'];
-                localStorage.setItem('eow_linked_steamid', defaultOwner.profileUrl);
-                localStorage.setItem('eow_linked_steamname', defaultOwner.displayName);
-                localStorage.setItem('eow_linked_customid', defaultOwner.customId);
-                localStorage.setItem('eow_linked_profileurl', defaultOwner.profileUrl);
+        function setAvatar(imgId, fallbackId, url) {
+            const img = document.getElementById(imgId);
+            const fb = fallbackId ? document.getElementById(fallbackId) : null;
+            if (!img) return;
+            if (url && /^https:\/\//.test(url)) {
+                img.onerror = () => { img.classList.add('hidden'); if (fb) fb.classList.remove('hidden'); };
+                img.src = url; img.classList.remove('hidden'); if (fb) fb.classList.add('hidden');
+            } else {
+                img.removeAttribute('src'); img.classList.add('hidden'); if (fb) fb.classList.remove('hidden');
             }
-            const linkedSteamId = localStorage.getItem('eow_linked_steamid');
-            const rawSteamName = localStorage.getItem('eow_linked_steamname') || 'Кроко Shanny';
-            const cleanSteamNick = rawSteamName.replace(/\s*\([^)]*\)\s*/g, '').trim();
+        }
+        function startSteamOpenIdAuth() {
+            if (!EOW_AUTH_API) { showToast('Вход через Steam ещё не подключён: не указан адрес сервера авторизации'); return; }
+            const back = /^https?:$/.test(location.protocol) ? location.origin + location.pathname : 'https://eclipseofwar.com/';
+            location.href = EOW_AUTH_API.replace(/\/+$/, '') + '/auth/steam?return=' + encodeURIComponent(back);
+        }
+        function switchConnectedSteamAccount() { startSteamOpenIdAuth(); }
+        function updateSteamProfileModalState() {
+            const u = EOW_AUTH.user;
+            const linked = !!u;
+            const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+            const nick = linked ? cleanNick(u.name) : 'Войти в профиль';
+            setText('headerProfileText', nick);
+            setText('heroProfileBtnText', nick);
+            setAvatar('headerProfileAvatar', 'headerProfileIcon', linked ? u.avatar : '');
+            const sw = document.getElementById('headerSwitchAccountBtn');
+            if (sw) { sw.classList.toggle('hidden', !linked); sw.classList.toggle('inline-flex', linked); }
+
             const hasOwnerAccess = isCurrentUserHardcodedOwner();
             const hasAdminAccess = isCurrentUserSiteAdmin();
             const hasCommanderAccess = isCurrentUserSiteCommander();
-
-            document.getElementById('headerProfileText').textContent = linkedSteamId ? cleanSteamNick : 'Войти в профиль';
-            document.getElementById('heroProfileBtnText').textContent = linkedSteamId ? cleanSteamNick : 'Войти в профиль';
-            document.getElementById('headerSwitchAccountBtn').classList.toggle('hidden', !linkedSteamId);
-            document.getElementById('headerSwitchAccountBtn').classList.toggle('inline-flex', !!linkedSteamId);
-
             const modesPanel = document.getElementById('ownerCommandModesPanel');
-            if (modesPanel) {
-                modesPanel.classList.toggle('hidden', !(hasOwnerAccess || hasAdminAccess || hasCommanderAccess));
-            }
+            if (modesPanel) modesPanel.classList.toggle('hidden', !(hasOwnerAccess || hasAdminAccess || hasCommanderAccess));
             const adminBtn = document.getElementById('enterAdminModeBtn');
             if (adminBtn) adminBtn.classList.toggle('hidden', !(hasOwnerAccess || hasAdminAccess));
             const cmdBtn = document.getElementById('enterCommanderModeBtn');
             if (cmdBtn) cmdBtn.classList.toggle('hidden', !(hasOwnerAccess || hasCommanderAccess));
 
-            document.getElementById('profilePageUsername').textContent = cleanSteamNick;
+            setText('profilePageUsername', linked ? cleanNick(u.name) : 'Гость');
+            setText('profilePageSteamId', linked ? `${u.steamId2} · ${u.steamId64}` : 'Steam не привязан');
+            setAvatar('profilePageAvatar', 'profilePageAvatarFallback', linked ? u.avatar : '');
+            const badges = document.getElementById('profileRoleBadges');
+            if (badges) badges.innerHTML = roleBadgesHtml(u);
+
+            const outView = document.getElementById('steamDisconnectedView');
+            const inView = document.getElementById('steamConnectedView');
+            if (outView) outView.classList.toggle('hidden', linked);
+            if (inView) inView.classList.toggle('hidden', !linked);
+            const note = document.getElementById('steamAuthNotConfiguredNote');
+            if (note) note.classList.toggle('hidden', !!EOW_AUTH_API);
+            if (linked) {
+                setText('profileModalName', cleanNick(u.name));
+                setText('profileModalSteamId', `${u.steamId2} · ${u.steamId64}`);
+                setAvatar('profileModalAvatar', 'profileModalAvatarFallback', u.avatar);
+                const mb = document.getElementById('profileModalRoleBadges');
+                if (mb) mb.innerHTML = roleBadgesHtml(u);
+                const sl = document.getElementById('profileModalSteamLink');
+                if (sl) sl.href = u.profileUrl || ('https://steamcommunity.com/profiles/' + u.steamId64);
+            }
             syncAdminRoleUI();
         }
 
@@ -5191,16 +5322,12 @@
         }
 
         function unlinkSteamAccount() {
-            localStorage.removeItem('eow_linked_steamid');
-            localStorage.removeItem('eow_linked_steamname');
-            localStorage.removeItem('eow_linked_customid');
-            localStorage.removeItem('eow_linked_profileurl');
+            setAuthUser(null, true);
             exitAdminBlock();
             exitCommanderBlock();
-            updateSteamProfileModalState();
             closeProfileModal();
             switchTab('about');
-            showToast('Аккаунт Steam отвязан');
+            showToast('Вы вышли из профиля');
         }
 
         function enterAdminBlock() {
@@ -6580,6 +6707,7 @@
         }
 
         function switchAdminTab(tabKey) {
+            if (tabKey === 'privileges') loadPlayersRegistry();
             if ((tabKey === 'privileges' || tabKey === 'newspublish') && !isCurrentUserHardcodedOwner()) {
                 showToast('Эта вкладка доступна только Овнеру проекта!');
                 return;
@@ -6955,7 +7083,7 @@
                 box.innerHTML = `<div class="text-xs text-sunset-200/60 italic">На этот день пока нет забронированных ивентов или тренировок.</div>`;
                 return;
             }
-            const currentCustomId = localStorage.getItem('eow_linked_customid') || 'ShannyyyY';
+            const currentCustomId = currentUserId();
             const isOwner = isCurrentUserHardcodedOwner();
 
             box.innerHTML = list.map(ev => {
@@ -6985,8 +7113,8 @@
             e.preventDefault();
             if (!selectedBookingDateKey) return;
             if (!bookedEventsStore[selectedBookingDateKey]) bookedEventsStore[selectedBookingDateKey] = [];
-            const currentCustomId = localStorage.getItem('eow_linked_customid') || 'ShannyyyY';
-            const currentName = localStorage.getItem('eow_linked_steamname') || currentCustomId;
+            const currentCustomId = currentUserId();
+            const currentName = currentUserName();
             const descEl = document.getElementById('bookEventDesc');
             const descVal = descEl ? (descEl.innerHTML || descEl.value || '') : '';
             bookedEventsStore[selectedBookingDateKey].push({
@@ -7011,7 +7139,7 @@
             if (!selectedBookingDateKey || !bookedEventsStore[selectedBookingDateKey]) return;
             const targetEv = bookedEventsStore[selectedBookingDateKey].find(x => x.id === evId);
             if (!targetEv) return;
-            const currentCustomId = localStorage.getItem('eow_linked_customid') || 'ShannyyyY';
+            const currentCustomId = currentUserId();
             if (!isCurrentUserHardcodedOwner() && targetEv.authorId !== currentCustomId) {
                 showToast('Вы можете снимать только свою собственную бронь!');
                 return;
@@ -7052,7 +7180,7 @@
                 box.innerHTML = `<div class="text-xs text-sunset-200/60 italic">На этот день все слоты свободны. Вы можете назначить тренировку на любое время.</div>`;
                 return;
             }
-            const currentCustomId = localStorage.getItem('eow_linked_customid') || 'ShannyyyY';
+            const currentCustomId = currentUserId();
             const isOwner = isCurrentUserHardcodedOwner();
 
             box.innerHTML = list.map(ev => {
@@ -7125,7 +7253,7 @@
 
             const rec = getCurrentUserRecord();
             const corpsTitle = corpsDatabase[rec?.commanderCorps || 'assault']?.title || 'Штурмовой Корпус';
-            const currentCustomId = localStorage.getItem('eow_linked_customid') || 'ShannyyyY';
+            const currentCustomId = currentUserId();
             const trnNotesEl = document.getElementById('trnNotesInput');
             const trnNotesVal = trnNotesEl ? (trnNotesEl.innerHTML || trnNotesEl.value || '').trim() : '';
 
@@ -7427,7 +7555,7 @@
         }
 
         // ВКЛАДКА «ВЫДАЧА ПРИВИЛЕГИЙ» (ТОЛЬКО ДЛЯ ОВНЕРА)
-        let selectedPrivilegePlayerId = 'SiteAdmin';
+        let selectedPrivilegePlayerId = null;
 
         function renderPrivilegesPlayersList() {
             const container = document.getElementById('privilegesPlayersListContainer');
@@ -7443,12 +7571,12 @@
 
             container.innerHTML = filtered.map(p => {
                 const isSel = p.id === selectedPrivilegePlayerId;
-                const isHardcodedOwner = !!HARDCODED_OWNER_ACCOUNTS[p.id];
+                const isHardcodedOwner = p.role === 'owner';
                 return `
                     <div onclick="selectPlayerForPrivileges('${p.id}')" class="cursor-pointer p-4 rounded-2xl transition-all ${isSel ? 'bg-gradient-to-r from-rosewood-500/35 to-sunset-500/20 border-2 border-sunset-400' : 'bg-dusk-950/75 border border-white/10 hover:border-white/25'} flex items-center justify-between gap-3">
                         <div class="space-y-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="font-display font-bold text-sm text-white">${p.nick}</span>
+                                <span class="font-display font-bold text-sm text-white">${escapeHtml(p.nick)}</span>
                                 ${isHardcodedOwner ? `<span class="px-2 py-0.5 rounded bg-sunset-500/30 text-sunset-200 font-mono text-[10px]">OWNER</span>` : ''}
                                 ${p.siteAdmin && !isHardcodedOwner ? `<span class="px-2 py-0.5 rounded bg-sky-500/25 text-sky-300 font-mono text-[10px]">SITE ADMIN</span>` : ''}
                                 ${p.siteCommander ? `<span class="px-2 py-0.5 rounded bg-emerald-500/25 text-emerald-300 font-mono text-[10px]">COMMANDER</span>` : ''}
@@ -7461,7 +7589,7 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+            }).join('') || `<div class="p-4 rounded-2xl bg-dusk-950/60 border border-dashed border-white/15 text-xs text-sunset-200/70 leading-relaxed">${EOW_AUTH_API ? 'Здесь появятся игроки, которые хотя бы раз вошли на сайт через Steam.' : 'Сервер авторизации ещё не подключён — список игроков недоступен.'}</div>`;
             renderPrivilegeInspector();
             refreshIcons();
         }
@@ -7479,13 +7607,13 @@
                 box.innerHTML = `<div class="text-xs text-sunset-200/70">Выберите игрока слева для настройки прав.</div>`;
                 return;
             }
-            const isOwnerAcc = !!HARDCODED_OWNER_ACCOUNTS[p.id];
+            const isOwnerAcc = p.role === 'owner';
 
             box.innerHTML = `
                 <div class="space-y-4">
                     <div class="border-b border-white/10 pb-3">
                         <span class="text-[10px] font-mono text-sunset-400 uppercase">Карточка управления доступом</span>
-                        <h3 class="font-display font-bold text-xl text-white mt-0.5">${p.nick}</h3>
+                        <h3 class="font-display font-bold text-xl text-white mt-0.5">${escapeHtml(p.nick)}</h3>
                         <div class="text-xs font-mono text-sunset-300 mt-0.5">${p.steamId}</div>
                     </div>
 
@@ -7548,6 +7676,7 @@
             const sel = document.getElementById('privServerRankSelect');
             if (p && sel) {
                 p.serverPrivilege = sel.value;
+                pushPlayerPatch(p, { serverPrivilege: p.serverPrivilege });
                 renderPrivilegesPlayersList();
                 showToast(`Привилегия на сервере для ${p.nick} изменена на «${p.serverPrivilege}»`);
             }
@@ -7556,8 +7685,9 @@
         function togglePlayerSiteAdmin(playerId) {
             if (!isCurrentUserHardcodedOwner()) return;
             const p = serverPlayersRegistry.find(x => x.id === playerId);
-            if (!p || HARDCODED_OWNER_ACCOUNTS[p.id]) return;
+            if (!p || p.role === 'owner') return;
             p.siteAdmin = !p.siteAdmin;
+            pushPlayerPatch(p, { siteAdmin: p.siteAdmin });
             updateSteamProfileModalState();
             renderPrivilegesPlayersList();
             showToast(p.siteAdmin ? `Игроку ${p.nick} выдан доступ Администратора на сайте!` : `У игрока ${p.nick} снят доступ Администратора на сайте.`);
@@ -7567,7 +7697,9 @@
             if (!isCurrentUserHardcodedOwner()) return;
             const p = serverPlayersRegistry.find(x => x.id === playerId);
             if (!p) return;
+            if (p.role === 'owner') { showToast('У Овнера уже есть все режимы'); return; }
             p.siteCommander = !p.siteCommander;
+            pushPlayerPatch(p, { siteCommander: p.siteCommander });
             updateSteamProfileModalState();
             renderPrivilegesPlayersList();
             showToast(p.siteCommander ? `Игроку ${p.nick} выдан режим Командира на сайте!` : `У игрока ${p.nick} снят режим Командира на сайте.`);
@@ -7579,6 +7711,7 @@
             const sel = document.getElementById('privCommanderCorpsSelect');
             if (p && sel) {
                 p.commanderCorps = sel.value;
+                pushPlayerPatch(p, { commanderCorps: p.commanderCorps });
                 const corpsTitle = corpsDatabase[p.commanderCorps]?.title || p.commanderCorps;
                 renderPrivilegesPlayersList();
                 showToast(`За командиром ${p.nick} закреплено формирование: «${corpsTitle}»`);
@@ -7589,7 +7722,9 @@
             if (!isCurrentUserHardcodedOwner()) return;
             const p = serverPlayersRegistry.find(x => x.id === playerId);
             if (!p) return;
+            if (p.role === 'owner') { showToast('Баллы Овнера не начисляются'); return; }
             p.adminPoints = Math.max(0, p.adminPoints + delta);
+            pushPlayerPatch(p, { adminPointsDelta: delta });
             renderPrivilegesPlayersList();
             renderAdminRewardsShop();
             showToast(`Баланс баллов ${p.nick}: ${p.adminPoints} БА`);
@@ -7739,6 +7874,7 @@
         renderEventFactionsList();
         renderAdminRewardsShop();
         renderPrivilegesPlayersList();
+        initSteamAuth();
     </script>
 
     <!-- Данные 3D-модели бойца (arc.mdl → сжатая геометрия + текстуры WebP) -->
