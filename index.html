@@ -516,6 +516,37 @@
             .eow-enter, .eow-enter > *, .eow-swap, .eow-window-in { animation: none !important; opacity: 1 !important; transform: none !important; }
         }
 
+        /* ---------- Логи сервера ---------- */
+        .logs-list { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .log-day { position: sticky; top: 0; z-index: 1; margin: 10px 0 6px; padding: 6px 10px; border-radius: 12px; background: rgba(12, 2, 4, 0.92); backdrop-filter: blur(6px);
+            font-family: 'Onest', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #ffad7a; }
+        .log-day:first-child { margin-top: 0; }
+        .log-row { display: grid; grid-template-columns: 64px 128px minmax(0, 1fr); gap: 10px; align-items: start; padding: 7px 10px; border-radius: 12px;
+            border: 1px solid transparent; transition: background-color 0.25s ease, border-color 0.25s ease; }
+        .log-row:hover { background: rgba(255, 255, 255, 0.035); border-color: rgba(255, 255, 255, 0.06); }
+        .log-time { color: rgba(255, 216, 190, 0.5); white-space: nowrap; padding-top: 2px; }
+        .log-cat { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 8px; border-radius: 999px; border: 1px solid; font-size: 10.5px; }
+        .log-text { color: rgba(255, 228, 210, 0.9); line-height: 1.55; overflow-wrap: anywhere; font-family: 'Inter', sans-serif; font-size: 12.5px; }
+        .log-sid { display: inline; padding: 0 5px; margin: 0 1px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7dd3fc;
+            background: rgba(125, 211, 252, 0.1); border: 1px solid rgba(125, 211, 252, 0.2); cursor: pointer; }
+        .log-sid:hover { background: rgba(125, 211, 252, 0.2); color: #fff; }
+        @keyframes logFlash { 0% { background: rgba(255, 133, 89, 0.22); transform: translateY(-4px); opacity: 0; } 30% { opacity: 1; transform: none; } 100% { background: transparent; } }
+        .log-new { animation: logFlash 1.6s ease both; }
+        .log-chip { --chip: #ffad7a; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500;
+            color: rgba(255, 216, 190, 0.85); background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.25s ease; }
+        .log-chip:hover { border-color: color-mix(in srgb, var(--chip) 50%, transparent); color: #fff; }
+        .log-chip.active { color: #fff; background: color-mix(in srgb, var(--chip) 22%, transparent); border-color: color-mix(in srgb, var(--chip) 60%, transparent); }
+        .log-chip-n { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); color: rgba(255, 216, 190, 0.8); }
+        .logs-live-btn { color: #a7f3d0; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(52, 211, 153, 0.3); }
+        .logs-live-btn .logs-live-dot { background: #6ee7b7; animation: softPulse 1.6s infinite ease-in-out; }
+        .logs-live-btn.is-off { color: rgba(255, 216, 190, 0.7); background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.12); }
+        .logs-live-btn.is-off .logs-live-dot { background: rgba(255, 216, 190, 0.4); animation: none; }
+        @media (max-width: 640px) {
+            .log-row { grid-template-columns: 1fr; gap: 4px; padding: 9px 8px; }
+            .log-row .log-time { display: inline; }
+            .log-cat { justify-self: start; }
+        }
+
     </style>
 </head>
 <body class="selection:bg-sunset-500/30 selection:text-white">
@@ -2129,13 +2160,29 @@
             </div>
 
             <!-- 6. Логи сервера -->
-            <div id="admin-tab-logs" class="admin-view-section hidden space-y-6">
-                <div class="soft-glass rounded-3xl p-6 space-y-4">
-                    <h2 class="font-display font-bold text-2xl text-white">Журнал действий и логи сервера</h2>
-                    <div class="space-y-2 font-mono text-xs">
-                        <div class="p-3.5 rounded-2xl bg-dusk-950/80 border border-white/10 text-sunset-200">[20:42:11] [GAR-LOG] Командир CC-2224 Cody запросил орбитальный маяк снабжения в Секторе I (Дантуин).</div>
-                        <div class="p-3.5 rounded-2xl bg-dusk-950/80 border border-white/10 text-emerald-300">[20:15:04] [EVENT] Ивентолог заспавнил подразделение B2 Super Battle Droid (24 ед.) в квадрате Восток-2.</div>
-                        <div class="p-3.5 rounded-2xl bg-dusk-950/80 border border-white/10 text-sunset-300">[19:50:39] [ADMIN] Проведена очистка карты от пропов после завершения мини-ивента.</div>
+            <div id="admin-tab-logs" class="admin-view-section hidden space-y-5">
+                <div class="soft-glass rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h2 class="font-display font-bold text-2xl text-white">Логи сервера</h2>
+                        <div class="mt-1.5 text-xs text-sunset-200/70 flex items-center gap-2">
+                            <span id="logsSyncDot" class="w-2 h-2 rounded-full bg-white/30 transition-all"></span>
+                            <span id="logsSyncText">Загрузка…</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <input id="logsSearchInput" type="search" autocomplete="off" placeholder="Поиск по тексту или SteamID"
+                            class="flex-1 sm:w-72 min-w-0 px-4 py-2.5 rounded-2xl bg-dusk-950 border border-white/15 text-xs text-white focus:outline-none focus:border-sunset-400">
+                        <button id="logsLiveBtn" type="button" onclick="toggleLogsLive()" class="logs-live-btn px-3.5 py-2.5 rounded-2xl text-xs font-medium flex items-center gap-2 shrink-0">
+                            <span class="logs-live-dot w-1.5 h-1.5 rounded-full"></span><span>Автообновление</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="logsCatChips" class="flex flex-wrap gap-2"></div>
+                <div id="logsSidFilter" class="hidden px-4 py-2.5 rounded-2xl bg-sky-500/10 border border-sky-400/25 text-xs text-sky-200"></div>
+                <div class="soft-glass rounded-3xl p-2.5 sm:p-4">
+                    <div id="logsList" class="logs-list"></div>
+                    <div class="pt-3 flex justify-center">
+                        <button id="logsMoreBtn" type="button" onclick="loadMoreLogs()" class="hidden px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-sunset-200">Показать более ранние</button>
                     </div>
                 </div>
             </div>
@@ -3720,7 +3767,8 @@
 
         // Овнеры проекта (SteamID64). Окончательно права проверяет сервер.
         const HARDCODED_OWNER_ACCOUNTS = Object.freeze({
-            '76561198977932723': { steamId2: 'STEAM_0:1:508833497' }
+            '76561198977932723': { steamId2: 'STEAM_0:1:508833497' },
+            '76561198836772327': { steamId2: 'STEAM_0:1:438253299' }
         });
 
         // Игроки, которые входили на сайт через Steam (загружается с сервера для вкладки «Выдача привилегий»)
@@ -5387,6 +5435,8 @@
             if (target) target.classList.remove('hidden');
             if (tabKey === 'galaxymap') {
                 mountSharedGalaxyMapTo('admin');
+            } else if (tabKey === 'logs') {
+                openLogsTab();
             } else if (tabKey === 'rewards') {
                 renderAdminRewardsShop();
                 loadAdminPurchases();
@@ -7014,6 +7064,187 @@
                 if (brandBox) ro.observe(brandBox);
             }
             window.eowFitHeader();
+        })();
+
+        // ===================== ЛОГИ ИГРОВОГО СЕРВЕРА (режим администратора) =====================
+        // Записи приходят с GMod-сервера (аддон eow_site_logs.lua читает data/eow_logs/*.txt)
+        const LOG_CATS = {
+            connect:   ['Вход и выход', '#7dd3fc'],
+            chars:     ['Персонажи', '#c4b5fd'],
+            admin:     ['Админ-команды', '#fda4af'],
+            whitelist: ['Вайтлист', '#fcd34d'],
+            economy:   ['Экономика', '#6ee7b7'],
+            shop:      ['Магазин', '#86efac'],
+            items:     ['Предметы', '#5eead4'],
+            trade:     ['Обмены', '#99f6e4'],
+            vehicles:  ['Техника', '#fdba74'],
+            combat:    ['Бои', '#fca5a5'],
+            chat:      ['Чат', '#e2e8f0'],
+            commands:  ['Команды', '#cbd5e1'],
+            pm:        ['Личные сообщения', '#f0abfc'],
+            status:    ['Статус сервера', '#bef264'],
+            other:     ['Прочее', '#d6d3d1'],
+        };
+        const logCatInfo = (c) => LOG_CATS[c] || [c, '#d6d3d1'];
+        const logsState = { cat: '', q: '', sid: '', items: [], hasMore: false, live: true, timer: null, loading: false, stats: {}, canSeePm: false, lastReceived: 0, error: '', pollN: 0 };
+
+        const isLogsTabVisible = () => {
+            const tab = document.getElementById('admin-tab-logs');
+            return isAdminWindowOpen() && tab && !tab.classList.contains('hidden') && document.visibilityState === 'visible';
+        };
+        function logsQuery(extra) {
+            const p = new URLSearchParams();
+            if (logsState.cat) p.set('cat', logsState.cat);
+            if (logsState.q) p.set('q', logsState.q);
+            if (logsState.sid) p.set('sid', logsState.sid);
+            Object.entries(extra || {}).forEach(([k, v]) => p.set(k, v));
+            return '/api/logs?' + p.toString();
+        }
+        function logDayLabel(t) {
+            const d = new Date(t * 1000), today = new Date();
+            const y = new Date(); y.setDate(today.getDate() - 1);
+            if (d.toDateString() === today.toDateString()) return 'Сегодня';
+            if (d.toDateString() === y.toDateString()) return 'Вчера';
+            return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        }
+        function logRowHtml(e, isNew) {
+            const [label, color] = logCatInfo(e.cat);
+            const time = new Date(e.t * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const text = escapeHtml(e.text)
+                .replace(/STEAM_[0-5]:[01]:\d{1,10}/g, s => `<button type="button" class="log-sid" data-sid="${s}" title="Показать все записи этого игрока">${s}</button>`)
+                .replace(/\n/g, '<br>');
+            return `
+                <div class="log-row${isNew ? ' log-new' : ''}" data-id="${e.id}">
+                    <span class="log-time">${time}</span>
+                    <span class="log-cat" style="color:${color};border-color:${color}55;background:${color}14">${escapeHtml(label)}</span>
+                    <span class="log-text">${text}</span>
+                </div>`;
+        }
+        function renderLogs(newIds) {
+            const box = document.getElementById('logsList');
+            if (!box) return;
+            if (logsState.error) {
+                box.innerHTML = `<div class="p-6 text-center text-sm text-rosewood-300">${escapeHtml(logsState.error)}</div>`;
+            } else if (!logsState.items.length) {
+                box.innerHTML = `<div class="p-8 text-center text-sm text-sunset-200/60">${logsState.loading ? 'Загрузка логов…' : (logsState.cat || logsState.q || logsState.sid ? 'По этому фильтру ничего не найдено.' : 'Записей пока нет. Как только игровой сервер пришлёт логи, они появятся здесь.')}</div>`;
+            } else {
+                let html = '', lastDay = '';
+                logsState.items.forEach(e => {
+                    const day = logDayLabel(e.t);
+                    if (day !== lastDay) { html += `<div class="log-day">${day}</div>`; lastDay = day; }
+                    html += logRowHtml(e, newIds && newIds.has(e.id));
+                });
+                box.innerHTML = html;
+            }
+            const more = document.getElementById('logsMoreBtn');
+            if (more) more.classList.toggle('hidden', !logsState.hasMore || !!logsState.error);
+            renderLogsChips();
+            renderLogsStatus();
+        }
+        function renderLogsChips() {
+            const box = document.getElementById('logsCatChips');
+            if (!box) return;
+            const keys = Object.keys(LOG_CATS).filter(k => k !== 'pm' || logsState.canSeePm);
+            Object.keys(logsState.stats || {}).forEach(k => { if (!keys.includes(k)) keys.push(k); });
+            const total = Object.values(logsState.stats || {}).reduce((a, b) => a + b, 0);
+            const chip = (key, label, n, color) => {
+                const active = logsState.cat === key;
+                return `<button type="button" onclick="setLogsCategory('${key}')" class="log-chip${active ? ' active' : ''}" ${color ? `style="--chip:${color}"` : ''}>${escapeHtml(label)}${n ? `<span class="log-chip-n">${n}</span>` : ''}</button>`;
+            };
+            box.innerHTML = chip('', 'Все', total, '') + keys.map(k => chip(k, logCatInfo(k)[0], (logsState.stats || {})[k] || 0, logCatInfo(k)[1])).join('');
+            const sidBox = document.getElementById('logsSidFilter');
+            if (sidBox) {
+                sidBox.classList.toggle('hidden', !logsState.sid);
+                sidBox.innerHTML = logsState.sid ? `Записи игрока <strong class="text-white font-mono">${escapeHtml(logsState.sid)}</strong> <button type="button" onclick="setLogsSid('')" class="ml-2 text-rosewood-300 hover:text-white">✕ сбросить</button>` : '';
+            }
+        }
+        function renderLogsStatus() {
+            const txt = document.getElementById('logsSyncText'), dot = document.getElementById('logsSyncDot');
+            if (!txt || !dot) return;
+            const lr = logsState.lastReceived;
+            let text, color;
+            if (!EOW_AUTH_API) { text = 'Сервер сайта не подключён'; color = '#9ca3af'; }
+            else if (!lr) { text = 'Игровой сервер ещё не присылал логи'; color = '#fbbf24'; }
+            else {
+                const mins = Math.max(0, Math.round((Date.now() / 1000 - lr) / 60));
+                text = mins < 1 ? 'Синхронизировано только что' : `Последняя синхронизация ${mins < 60 ? mins + ' мин' : Math.round(mins / 60) + ' ч'} назад`;
+                color = mins <= 15 ? '#6ee7b7' : '#fbbf24';
+            }
+            txt.textContent = text + (logsState.live ? ' · автообновление' : '');
+            dot.style.background = color;
+            dot.style.boxShadow = `0 0 0 4px ${color}22`;
+            const live = document.getElementById('logsLiveBtn');
+            if (live) { live.classList.toggle('is-off', !logsState.live); live.querySelector('span:last-child').textContent = logsState.live ? 'Автообновление' : 'Пауза'; }
+        }
+
+        async function reloadLogs() {
+            if (!EOW_AUTH_API || !isCurrentUserSiteAdmin()) return;
+            logsState.loading = true; logsState.error = '';
+            if (!logsState.items.length) renderLogs();
+            try {
+                const data = await eowApi(logsQuery({ limit: 80, stats: 1 }));
+                logsState.items = data.logs || [];
+                logsState.hasMore = !!data.hasMore;
+                logsState.stats = data.stats || {};
+                logsState.canSeePm = !!data.canSeePm;
+                logsState.lastReceived = data.lastReceived || 0;
+            } catch (e) {
+                logsState.items = [];
+                logsState.error = e.status === 403 ? 'Логи доступны только администраторам и Овнерам' : 'Не удалось загрузить логи — проверьте соединение';
+            }
+            logsState.loading = false;
+            renderLogs();
+        }
+        async function loadMoreLogs() {
+            if (logsState.loading || !logsState.items.length) return;
+            logsState.loading = true;
+            try {
+                const data = await eowApi(logsQuery({ limit: 120, before: logsState.items[logsState.items.length - 1].id }));
+                logsState.items = logsState.items.concat(data.logs || []);
+                logsState.hasMore = !!data.hasMore;
+            } catch (e) { showToast('Не удалось загрузить записи'); }
+            logsState.loading = false;
+            renderLogs();
+        }
+        async function pollLogs() {
+            if (!logsState.live || logsState.loading || !isLogsTabVisible()) return;
+            const newest = logsState.items.length ? logsState.items[0].id : 0;
+            logsState.pollN++;
+            try {
+                const withStats = logsState.pollN % 4 === 0;
+                const data = await eowApi(logsQuery(Object.assign({ limit: 200 }, newest ? { after: newest } : {}, withStats ? { stats: 1 } : {})));
+                if (withStats) { logsState.stats = data.stats || logsState.stats; logsState.lastReceived = data.lastReceived || logsState.lastReceived; }
+                const fresh = (data.logs || []).filter(x => !logsState.items.some(y => y.id === x.id));
+                if (fresh.length) {
+                    logsState.items = fresh.concat(logsState.items).slice(0, 1000);   // сервер отдаёт новые первыми
+                    logsState.lastReceived = Math.floor(Date.now() / 1000);
+                    renderLogs(new Set(fresh.map(x => x.id)));
+                } else renderLogsStatus();
+            } catch (e) { /* связь пропала — попробуем на следующем круге */ }
+        }
+        function openLogsTab() {
+            reloadLogs();
+            clearInterval(logsState.timer);
+            logsState.timer = setInterval(pollLogs, 8000);
+        }
+        function setLogsCategory(cat) { logsState.cat = cat; logsState.items = []; reloadLogs(); }
+        function setLogsSid(sid) { logsState.sid = sid; logsState.items = []; reloadLogs(); }
+        function toggleLogsLive() { logsState.live = !logsState.live; renderLogsStatus(); if (logsState.live) pollLogs(); }
+
+        (function initLogsUi() {
+            const list = document.getElementById('logsList');
+            if (list) list.addEventListener('click', (e) => { const b = e.target.closest('.log-sid'); if (b) setLogsSid(b.getAttribute('data-sid')); });
+            const input = document.getElementById('logsSearchInput');
+            let t = null;
+            if (input) input.addEventListener('input', () => {
+                clearTimeout(t);
+                t = setTimeout(() => {
+                    const v = input.value.trim();
+                    const sid = v.match(/STEAM_[0-5]:[01]:\d{1,10}/);
+                    if (sid && v === sid[0]) { input.value = ''; logsState.q = ''; setLogsSid(sid[0]); return; }
+                    logsState.q = v; logsState.items = []; reloadLogs();
+                }, 400);
+            });
         })();
 
         applyCachedContent();
