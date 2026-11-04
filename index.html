@@ -346,6 +346,19 @@
 
         /* ---------- Богатый текст ---------- */
         .rich-editor-content:focus { outline: none; }
+        .dp-preview { background: #313338; border: 1px solid rgba(255,255,255,0.06); }
+        .dp-muted { color: #949ba4; }
+        .dp-bot-tag { background: #5865f2; color: #fff; font-size: 10px; font-weight: 600; padding: 0 4px; border-radius: 3px; line-height: 15px; }
+        .dp-embed { background: #2b2d31; border-left: 4px solid #e03543; border-radius: 4px; padding: 10px 14px 14px 12px; max-width: 432px; transition: border-color 0.2s ease; }
+        .dp-embed-title { color: #f2f3f5; font-weight: 600; font-size: 15px; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
+        .dp-embed-text { color: #dbdee1; font-size: 13.5px; line-height: 1.45; margin-top: 6px; overflow-wrap: anywhere; }
+        .dp-embed-text a { color: #00a8fc; }
+        .dp-embed-text code { background: #1e1f22; padding: 0 3px; border-radius: 3px; font-size: 12px; }
+        .dp-quote { display: inline-block; border-left: 3px solid #4e5058; padding-left: 8px; }
+        .dp-embed-img { display: block; width: 100%; border-radius: 4px; margin-top: 12px; max-height: 320px; object-fit: cover; }
+        .dp-swatch { width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
+        .dp-swatch[aria-pressed="true"] { border-color: #fff; }
+        #dpSendBtn:disabled { opacity: 0.6; cursor: wait; }
         .rich-editor-content h1, .rich-editor-content h2, .rich-editor-content h3 {
             font-family: 'Onest', sans-serif;
             font-weight: 700;
@@ -2144,6 +2157,7 @@
                     <button onclick="switchAdminTab('beta')" data-admin-tab="beta" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Закрытый бета-тест<span id="betaNavCount" class="beta-nav-n hidden"></span></button>
                     <button onclick="switchAdminTab('rewards')" data-admin-tab="rewards" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Награждение</button>
                     <button id="adminNavNewsPublishBtn" onclick="switchAdminTab('newspublish')" data-admin-tab="newspublish" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap active">Выпуск новостей</button>
+                    <button id="adminNavDiscordPostBtn" onclick="switchAdminTab('discordpost')" data-admin-tab="discordpost" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap hidden">Пост в Discord</button>
                     <button id="adminNavPrivilegesBtn" onclick="switchAdminTab('privileges')" data-admin-tab="privileges" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Выдача привилегий</button>
                 </nav>
             </div>
@@ -2438,6 +2452,74 @@
             </div>
 
             <!-- 9. Выпуск новостей (ТОЛЬКО ДЛЯ ОВНЕРА) -->
+            <!-- Пост в Discord (только Овнер): картинка-плашка через вебхук -->
+            <div id="admin-tab-discordpost" class="admin-view-section hidden space-y-6">
+                <div class="soft-glass rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4 border border-sunset-400/35">
+                    <div>
+                        <h2 class="font-display font-bold text-2xl text-white mt-0.5">Пост в Discord</h2>
+                        <p class="text-xs text-sunset-200/70 mt-1">Плашка с картинкой, заголовком и текстом — уходит в канал через вебхук</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full bg-sunset-500/15 border border-sunset-400/30 text-sunset-300 font-mono text-[11px]">OWNER</span>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <form onsubmit="sendDiscordPost(event)" class="lg:col-span-7 soft-glass rounded-3xl p-6 sm:p-7 space-y-4 border border-sunset-400/30">
+                        <div>
+                            <label for="dpWebhookInput" class="block text-[11px] font-mono text-sunset-300 mb-1">Вебхук канала</label>
+                            <input id="dpWebhookInput" type="url" required autocomplete="off" oninput="saveDiscordPostDraft()" placeholder="https://discord.com/api/webhooks/..." class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
+                            <span class="block text-[10px] text-sunset-200/50 mt-1">Канал → Настройки → Интеграции → Вебхуки → Копировать URL. Хранится только в этом браузере.</span>
+                        </div>
+                        <div>
+                            <label for="dpImageInput" class="block text-[11px] font-mono text-sunset-300 mb-1">Ссылка на картинку</label>
+                            <input id="dpImageInput" type="url" autocomplete="off" oninput="saveDiscordPostDraft(); renderDiscordPostPreview()" placeholder="https://...png / jpg / gif" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
+                        </div>
+                        <div>
+                            <span class="block text-[11px] font-mono text-sunset-300 mb-1.5">Цвет плашки</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div id="dpColorSwatches" class="flex flex-wrap gap-2"></div>
+                                <label class="flex items-center gap-2 pl-1">
+                                    <input id="dpColorInput" type="color" value="#e03543" oninput="setDiscordPostColor(this.value)" class="w-9 h-9 rounded-lg bg-transparent border border-white/15 cursor-pointer" aria-label="Свой цвет">
+                                    <span id="dpColorHex" class="font-mono text-xs text-sunset-200">#E03543</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="dpTitleInput" class="block text-[11px] font-mono text-sunset-300 mb-1">Заголовок</label>
+                            <input id="dpTitleInput" type="text" maxlength="256" oninput="saveDiscordPostDraft(); renderDiscordPostPreview()" placeholder="Например: Глобальный ивент — оборона Дантуина" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-sm text-white focus:outline-none focus:border-sunset-400">
+                        </div>
+                        <div>
+                            <label for="dpTextInput" class="block text-[11px] font-mono text-sunset-300 mb-1">Текст</label>
+                            <textarea id="dpTextInput" rows="8" maxlength="4096" oninput="saveDiscordPostDraft(); renderDiscordPostPreview()" placeholder="Поддерживается разметка Discord: **жирный**, *курсив*, __подчёркнутый__, > цитата, [ссылка](https://...)" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-sm text-white leading-relaxed focus:outline-none focus:border-sunset-400 custom-dark-scroll"></textarea>
+                            <span id="dpTextCount" class="block text-right text-[10px] font-mono text-sunset-200/50 mt-1">0 / 4096</span>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                            <div id="dpStatusText" class="text-xs font-mono text-sunset-300" aria-live="polite"></div>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="clearDiscordPost()" class="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-sunset-200">Очистить</button>
+                                <button id="dpSendBtn" type="submit" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 hover:opacity-95 text-white font-display font-semibold text-sm shadow-lg shadow-sunset-500/25 flex items-center gap-2">
+                                    <i data-lucide="send" class="w-4 h-4"></i><span>Отправить</span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="lg:col-span-5 lg:sticky lg:top-4 space-y-2">
+                        <div class="text-[11px] font-mono text-sunset-300 px-1">Так это будет выглядеть</div>
+                        <div class="dp-preview rounded-2xl p-4">
+                            <div class="flex gap-3">
+                                <div class="w-10 h-10 rounded-full shrink-0 bg-gradient-to-br from-rosewood-400 to-sunset-500 flex items-center justify-center font-display font-bold text-white text-sm">E</div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-baseline gap-2"><span class="text-sm font-semibold text-white">Eclipse of War</span><span class="dp-bot-tag">БОТ</span><span class="text-[11px] dp-muted">сегодня</span></div>
+                                    <div id="dpPreviewEmbed" class="dp-embed mt-1.5">
+                                        <div id="dpPreviewTitle" class="dp-embed-title"></div>
+                                        <div id="dpPreviewText" class="dp-embed-text"></div>
+                                        <img id="dpPreviewImg" alt="" class="dp-embed-img hidden">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="admin-tab-newspublish" class="admin-view-section space-y-6">
                 <div class="soft-glass rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4 border border-sunset-400/35">
                     <div>
@@ -4220,6 +4302,8 @@
             if (newsPubBtn) {
                 newsPubBtn.classList.toggle('hidden', !isOwner);
             }
+            const dpBtn = document.getElementById('adminNavDiscordPostBtn');
+            if (dpBtn) dpBtn.classList.toggle('hidden', !isOwner);
             const roleLabel = document.getElementById('adminTopRoleIndicator');
             if (roleLabel) {
                 roleLabel.textContent = isOwner ? 'OWNER MODE' : 'ADMIN MODE';
@@ -5642,9 +5726,116 @@
             }
         }
 
+        // ===================== ПОСТ В DISCORD (Овнер) =====================
+        const DP_DRAFT_KEY = 'eow_discord_post_draft';
+        const DP_COLORS = ['#e03543', '#ff8559', '#f5b942', '#3ba55d', '#38bdf8', '#5865f2', '#a855f7', '#e2e8f0'];
+        let dpColor = '#e03543';
+        let dpLoaded = false;
+        function setDiscordPostColor(hex) {
+            if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return;
+            dpColor = hex.toLowerCase();
+            const inp = document.getElementById('dpColorInput'); if (inp && inp.value !== dpColor) inp.value = dpColor;
+            const lab = document.getElementById('dpColorHex'); if (lab) lab.textContent = dpColor.toUpperCase();
+            document.querySelectorAll('#dpColorSwatches button').forEach(b => b.setAttribute('aria-pressed', b.dataset.color === dpColor ? 'true' : 'false'));
+            saveDiscordPostDraft();
+            renderDiscordPostPreview();
+        }
+        function saveDiscordPostDraft() {
+            if (!dpLoaded) return;
+            const v = id => (document.getElementById(id)?.value || '');
+            lsSet(DP_DRAFT_KEY, JSON.stringify({ webhook: v('dpWebhookInput').trim(), image: v('dpImageInput').trim(), color: dpColor, title: v('dpTitleInput'), text: v('dpTextInput') }));
+        }
+        function loadDiscordPostDraft() {
+            const box = document.getElementById('dpColorSwatches');
+            if (box && !box.children.length) {
+                box.innerHTML = DP_COLORS.map(c => `<button type="button" data-color="${c}" onclick="setDiscordPostColor('${c}')" aria-label="Цвет ${c}" class="dp-swatch" style="background:${c}"></button>`).join('');
+            }
+            if (!dpLoaded) {
+                let d = {};
+                try { d = JSON.parse(lsGet(DP_DRAFT_KEY) || '{}') || {}; } catch (e) { d = {}; }
+                const set = (id, val) => { const el = document.getElementById(id); if (el && typeof val === 'string') el.value = val; };
+                set('dpWebhookInput', d.webhook); set('dpImageInput', d.image); set('dpTitleInput', d.title); set('dpTextInput', d.text);
+                dpLoaded = true;
+                setDiscordPostColor(d.color || dpColor);
+            }
+            renderDiscordPostPreview();
+        }
+        // разметка Discord → безопасный HTML для предпросмотра
+        function discordMarkdownToHtml(src) {
+            let h = escapeHtml(src || '');
+            h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+            h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/__(.+?)__/g, '<u>$1</u>')
+                 .replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/~~(.+?)~~/g, '<s>$1</s>').replace(/&#96;(.+?)&#96;/g, '<code>$1</code>');
+            h = h.split('\n').map(line => line.startsWith('&gt; ') ? `<span class="dp-quote">${line.slice(5)}</span>` : line).join('<br>');
+            return h;
+        }
+        function renderDiscordPostPreview() {
+            const title = document.getElementById('dpTitleInput')?.value || '';
+            const text = document.getElementById('dpTextInput')?.value || '';
+            const img = (document.getElementById('dpImageInput')?.value || '').trim();
+            const emb = document.getElementById('dpPreviewEmbed'); if (emb) emb.style.borderLeftColor = dpColor;
+            const t = document.getElementById('dpPreviewTitle'); if (t) { t.textContent = title; t.classList.toggle('hidden', !title); }
+            const x = document.getElementById('dpPreviewText'); if (x) { x.innerHTML = discordMarkdownToHtml(text); x.classList.toggle('hidden', !text); }
+            const cnt = document.getElementById('dpTextCount'); if (cnt) cnt.textContent = text.length + ' / 4096';
+            const im = document.getElementById('dpPreviewImg');
+            if (im) {
+                const ok = /^https?:\/\//i.test(img);
+                if (ok && im.getAttribute('src') !== img) im.src = img;
+                im.classList.toggle('hidden', !ok);
+                im.onerror = () => im.classList.add('hidden');
+            }
+        }
+        function clearDiscordPost() {
+            ['dpImageInput', 'dpTitleInput', 'dpTextInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            const st = document.getElementById('dpStatusText'); if (st) st.textContent = '';
+            saveDiscordPostDraft();
+            renderDiscordPostPreview();
+        }
+        async function sendDiscordPost(ev) {
+            if (ev) ev.preventDefault();
+            if (!isCurrentUserHardcodedOwner()) { showToast('Отправка доступна только Овнеру проекта'); return; }
+            const st = document.getElementById('dpStatusText');
+            const btn = document.getElementById('dpSendBtn');
+            const webhook = (document.getElementById('dpWebhookInput')?.value || '').trim();
+            const image = (document.getElementById('dpImageInput')?.value || '').trim();
+            const title = (document.getElementById('dpTitleInput')?.value || '').trim();
+            const text = (document.getElementById('dpTextInput')?.value || '').trim();
+            if (!/^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+/i.test(webhook)) {
+                if (st) st.textContent = 'Нужна ссылка вебхука Discord: https://discord.com/api/webhooks/…';
+                return;
+            }
+            if (!title && !text && !image) { if (st) st.textContent = 'Заполните заголовок, текст или картинку'; return; }
+            if (image && !/^https?:\/\//i.test(image)) { if (st) st.textContent = 'Ссылка на картинку должна начинаться с https://'; return; }
+            const embed = { color: parseInt(dpColor.slice(1), 16) };
+            if (title) embed.title = title.slice(0, 256);
+            if (text) embed.description = text.slice(0, 4096);
+            if (image) embed.image = { url: image };
+            if (btn) btn.disabled = true;
+            if (st) st.textContent = 'Отправка…';
+            try {
+                const res = await fetch(webhook + (webhook.includes('?') ? '&' : '?') + 'wait=true', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'Eclipse of War', embeds: [embed], allowed_mentions: { parse: [] } }),
+                });
+                if (res.ok) {
+                    if (st) st.textContent = 'Отправлено в Discord';
+                    showToast('Пост отправлен в Discord');
+                } else {
+                    let msg = '';
+                    try { const j = await res.json(); msg = j && j.message ? ': ' + j.message : ''; } catch (e) { /* ignore */ }
+                    if (st) st.textContent = 'Discord отклонил пост (' + res.status + ')' + msg;
+                }
+            } catch (e) {
+                if (st) st.textContent = 'Нет связи с Discord — проверьте ссылку вебхука';
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function switchAdminTab(tabKey) {
             if (tabKey === 'privileges') loadPlayersRegistry();
-            if ((tabKey === 'privileges' || tabKey === 'newspublish') && !isCurrentUserHardcodedOwner()) {
+            if ((tabKey === 'privileges' || tabKey === 'newspublish' || tabKey === 'discordpost') && !isCurrentUserHardcodedOwner()) {
                 showToast('Эта вкладка доступна только Овнеру проекта!');
                 return;
             }
@@ -5668,6 +5859,8 @@
                 renderPrivilegesPlayersList();
             } else if (tabKey === 'newspublish') {
                 renderOwnerNewsManageList();
+            } else if (tabKey === 'discordpost') {
+                loadDiscordPostDraft();
             }
             refreshIcons();
         }
