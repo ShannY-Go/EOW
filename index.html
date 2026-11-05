@@ -2163,6 +2163,7 @@
                     <button onclick="switchAdminTab('rewards')" data-admin-tab="rewards" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Награждение</button>
                     <button id="adminNavNewsPublishBtn" onclick="switchAdminTab('newspublish')" data-admin-tab="newspublish" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap active">Выпуск новостей</button>
                     <button id="adminNavPrivilegesBtn" onclick="switchAdminTab('privileges')" data-admin-tab="privileges" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Выдача привилегий</button>
+                    <button id="adminNavDiscordMsgBtn" onclick="switchAdminTab('discordmsg')" data-admin-tab="discordmsg" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap hidden">Discord-сообщение</button>
                 </nav>
             </div>
         </div>
@@ -2497,6 +2498,82 @@
             </div>
 
             <!-- 9. Выпуск новостей (ТОЛЬКО ДЛЯ ОВНЕРА) -->
+            <!-- Discord-сообщение через вебхук (только Овнеры) -->
+            <div id="admin-tab-discordmsg" class="admin-view-section hidden space-y-6">
+                <div class="soft-glass rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4 border border-sunset-400/35">
+                    <div>
+                        <h2 class="font-display font-bold text-2xl text-white mt-0.5">Сообщение в Discord через вебхук</h2>
+                        <p class="text-xs text-sunset-200/70 mt-1">Embed-сообщение с цветной плашкой. Вкладка доступна только Овнерам проекта.</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full bg-sunset-500/20 border border-sunset-400/30 text-sunset-300 font-mono text-[11px]">OWNER ONLY</span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <div class="lg:col-span-7 soft-glass rounded-3xl p-6 sm:p-7 space-y-4 border border-sunset-400/30">
+                        <div class="p-4 rounded-2xl bg-dusk-950/90 border border-sunset-400/30">
+                            <label class="block text-[11px] font-mono text-sunset-300 mb-1">URL вебхука канала Discord</label>
+                            <input id="dmWebhookInput" type="url" autocomplete="off" oninput="dmSaveWebhook()" placeholder="https://discord.com/api/webhooks/..." class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-900 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
+                            <span class="block text-[10px] text-sunset-200/50 mt-1">Настройки канала → Интеграции → Вебхуки → Копировать URL вебхука. Сохраняется только в этом браузере.</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-sunset-200 mb-1">Заголовок <span id="dmTitleCount" class="text-sunset-200/40 font-mono">0/256</span></label>
+                            <input id="dmTitleInput" type="text" maxlength="256" oninput="dmRenderPreview()" placeholder="Например: Глобальный вылет на Дантуин" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs sm:text-sm text-white">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-sunset-200 mb-1">Основной текст <span id="dmTextCount" class="text-sunset-200/40 font-mono">0/4000</span></label>
+                            <textarea id="dmTextInput" rows="8" maxlength="4000" oninput="dmRenderPreview()" placeholder="Текст сообщения. Поддерживается разметка Discord: **жирный**, *курсив*, __подчёркнутый__, ~~зачёркнутый~~, [текст](https://ссылка)" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs sm:text-sm text-white leading-relaxed custom-dark-scroll"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-sunset-200 mb-1">Изображение (ссылка на картинку)</label>
+                            <input id="dmImageInput" type="url" oninput="dmRenderPreview()" placeholder="https://.../image.png" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono">
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <label class="block text-xs text-sunset-200">Ссылки</label>
+                                <button type="button" onclick="dmAddLinkRow()" class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/15 hover:border-sunset-400 text-[11px] text-white flex items-center gap-1.5"><i data-lucide="plus" class="w-3.5 h-3.5"></i>Добавить ссылку</button>
+                            </div>
+                            <div id="dmLinksList" class="space-y-2"></div>
+                            <span class="block text-[10px] text-sunset-200/50">Ссылки появятся в сообщении отдельным блоком «Ссылки».</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-sunset-200 mb-1">Цвет плашки</label>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input id="dmColorInput" type="color" value="#e03543" oninput="dmSetColor(this.value)" class="w-11 h-9 rounded-lg bg-transparent border border-white/15 cursor-pointer">
+                                <input id="dmColorHexInput" type="text" value="#e03543" maxlength="7" oninput="dmSetColor(this.value)" class="w-24 px-2.5 py-2 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono">
+                                <div id="dmColorPresets" class="flex flex-wrap gap-1.5"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/10">
+                            <div id="dmStatusText" class="text-xs font-mono text-sunset-300">Готово к отправке</div>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="dmClearForm()" class="px-4 py-3 rounded-2xl bg-white/5 border border-white/15 text-white text-xs">Очистить</button>
+                                <button id="dmSendBtn" type="button" onclick="sendOwnerDiscordMessage()" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 hover:opacity-95 text-white font-display font-semibold text-xs sm:text-sm shadow-lg shadow-sunset-500/25 flex items-center gap-2 disabled:opacity-50">
+                                    <i data-lucide="send" class="w-4 h-4"></i><span>Отправить в Discord</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-5 soft-glass rounded-3xl p-6 space-y-3 border border-white/10 lg:sticky lg:top-24">
+                        <h3 class="font-display font-bold text-lg text-white">Предпросмотр</h3>
+                        <div class="rounded-2xl p-4" style="background:#313338;">
+                            <div id="dmPreviewEmbed" class="rounded-md p-3.5 space-y-2" style="background:#2b2d31;border-left:4px solid #e03543;">
+                                <div id="dmPreviewTitle" class="font-semibold text-[15px] text-white break-words"></div>
+                                <div id="dmPreviewText" class="text-[13px] leading-snug break-words" style="color:#dbdee1;white-space:pre-wrap;"></div>
+                                <div id="dmPreviewLinks" class="text-[13px] space-y-0.5"></div>
+                                <img id="dmPreviewImage" alt="" class="hidden rounded-md max-h-72 w-auto mt-1" onerror="this.classList.add('hidden')">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="admin-tab-newspublish" class="admin-view-section space-y-6">
                 <div class="soft-glass rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4 border border-sunset-400/35">
                     <div>
@@ -4277,6 +4354,8 @@
             }
             const announceBtn = document.getElementById('adminNavAnnounceBtn');
             if (announceBtn) announceBtn.classList.toggle('hidden', !isOwner);
+            const dmBtn = document.getElementById('adminNavDiscordMsgBtn');
+            if (dmBtn) dmBtn.classList.toggle('hidden', !isOwner);
             const newsPubBtn = document.getElementById('adminNavNewsPublishBtn');
             if (newsPubBtn) {
                 newsPubBtn.classList.toggle('hidden', !isOwner);
@@ -4310,7 +4389,7 @@
             document.body.style.overflow = 'hidden';
             const activeAdminBtn = document.querySelector('.admin-nav-pill.active');
             const activeTabKey = activeAdminBtn ? activeAdminBtn.getAttribute('data-admin-tab') : 'events';
-            if ((activeTabKey === 'privileges' || activeTabKey === 'newspublish' || activeTabKey === 'announce') && !isCurrentUserHardcodedOwner()) {
+            if ((activeTabKey === 'privileges' || activeTabKey === 'newspublish' || activeTabKey === 'announce' || activeTabKey === 'discordmsg') && !isCurrentUserHardcodedOwner()) {
                 switchAdminTab('events');
             } else if (activeTabKey === 'galaxymap') {
                 mountSharedGalaxyMapTo('admin');
@@ -5604,9 +5683,154 @@
             return { text: cleanText, imageUrl: embeddedImageUrl };
         }
 
+// ===== Discord-сообщение через вебхук (только Овнеры) =====
+        const DM_WEBHOOK_KEY = 'eow_owner_discord_msg_webhook';
+        const DM_WEBHOOK_RE = /^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/[\w-]+\/?$/;
+        const DM_COLOR_PRESETS = ['#e03543', '#ff8559', '#f5c542', '#3ba55d', '#5865f2', '#00b0f4', '#9b59b6', '#ffffff', '#2b2d31'];
+        let dmColor = '#e03543';
+        let dmInited = false;
+
+        function dmIsHttpUrl(v) {
+            try { const u = new URL(v); return u.protocol === 'https:' || u.protocol === 'http:'; } catch (e) { return false; }
+        }
+        function dmInitTab() {
+            if (!dmInited) {
+                dmInited = true;
+                const wh = document.getElementById('dmWebhookInput');
+                if (wh) wh.value = lsGet(DM_WEBHOOK_KEY) || '';
+                const presets = document.getElementById('dmColorPresets');
+                if (presets) presets.innerHTML = DM_COLOR_PRESETS.map(c =>
+                    `<button type="button" title="${c}" onclick="dmSetColor('${c}')" class="w-7 h-7 rounded-lg border border-white/20 hover:scale-110 transition" style="background:${c}"></button>`).join('');
+                if (!document.querySelector('#dmLinksList .dm-link-row')) dmAddLinkRow();
+            }
+            dmRenderPreview();
+        }
+        function dmSaveWebhook() {
+            const wh = document.getElementById('dmWebhookInput');
+            if (wh) lsSet(DM_WEBHOOK_KEY, wh.value.trim() || null);
+        }
+        function dmSetColor(v) {
+            v = String(v || '').trim();
+            if (!/^#?[0-9a-fA-F]{6}$/.test(v)) return;
+            if (v[0] !== '#') v = '#' + v;
+            dmColor = v.toLowerCase();
+            const c = document.getElementById('dmColorInput');
+            const h = document.getElementById('dmColorHexInput');
+            if (c && c.value !== dmColor) c.value = dmColor;
+            if (h && document.activeElement !== h) h.value = dmColor;
+            dmRenderPreview();
+        }
+        function dmAddLinkRow(label = '', url = '') {
+            const list = document.getElementById('dmLinksList');
+            if (!list) return;
+            if (list.querySelectorAll('.dm-link-row').length >= 10) { showToast('Максимум 10 ссылок'); return; }
+            const row = document.createElement('div');
+            row.className = 'dm-link-row flex gap-2';
+            row.innerHTML = `
+                <input type="text" maxlength="80" placeholder="Название (например: Наш Discord)" class="dm-link-label w-2/5 px-3 py-2 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
+                <input type="url" placeholder="https://..." class="dm-link-url flex-1 min-w-0 px-3 py-2 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono">
+                <button type="button" title="Удалить" class="dm-link-del px-2.5 rounded-xl bg-white/5 border border-white/15 hover:border-rosewood-400 text-white"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>`;
+            row.querySelector('.dm-link-label').value = label;
+            row.querySelector('.dm-link-url').value = url;
+            row.querySelectorAll('input').forEach(i => i.addEventListener('input', dmRenderPreview));
+            row.querySelector('.dm-link-del').addEventListener('click', () => { row.remove(); dmRenderPreview(); });
+            list.appendChild(row);
+            refreshIcons();
+        }
+        function dmGetLinks() {
+            return Array.from(document.querySelectorAll('#dmLinksList .dm-link-row')).map(r => ({
+                label: r.querySelector('.dm-link-label').value.trim(),
+                url: r.querySelector('.dm-link-url').value.trim()
+            })).filter(l => l.url);
+        }
+        function dmMdLabel(s) { return String(s).replace(/[\[\]]/g, ''); }
+        function dmRenderPreview() {
+            const val = id => (document.getElementById(id)?.value || '');
+            const title = val('dmTitleInput').trim();
+            const text = val('dmTextInput');
+            const img = val('dmImageInput').trim();
+            const setT = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+            setT('dmTitleCount', `${val('dmTitleInput').length}/256`);
+            setT('dmTextCount', `${text.length}/4000`);
+            const embed = document.getElementById('dmPreviewEmbed');
+            if (embed) embed.style.borderLeftColor = dmColor;
+            setT('dmPreviewTitle', title || 'Заголовок сообщения');
+            const pt = document.getElementById('dmPreviewText');
+            if (pt) { pt.textContent = text || 'Основной текст сообщения появится здесь.'; pt.style.opacity = text ? '1' : '.5'; }
+            const pl = document.getElementById('dmPreviewLinks');
+            if (pl) {
+                const links = dmGetLinks().filter(l => dmIsHttpUrl(l.url));
+                pl.innerHTML = links.length ? '<div class="font-semibold text-white text-[12px]">Ссылки</div>' + links.map(l =>
+                    `<div><a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" style="color:#00a8fc">${escapeHtml(l.label || l.url)}</a></div>`).join('') : '';
+            }
+            const pi = document.getElementById('dmPreviewImage');
+            if (pi) {
+                if (img && dmIsHttpUrl(img)) { if (pi.getAttribute('src') !== img) pi.src = img; pi.classList.remove('hidden'); }
+                else { pi.removeAttribute('src'); pi.classList.add('hidden'); }
+            }
+        }
+        function dmClearForm() {
+            ['dmTitleInput', 'dmTextInput', 'dmImageInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            const list = document.getElementById('dmLinksList');
+            if (list) list.innerHTML = '';
+            dmAddLinkRow();
+            dmRenderPreview();
+            const st = document.getElementById('dmStatusText');
+            if (st) st.textContent = 'Форма очищена';
+        }
+        async function sendOwnerDiscordMessage() {
+            const st = document.getElementById('dmStatusText');
+            const status = (t) => { if (st) st.textContent = t; };
+            if (!isCurrentUserHardcodedOwner()) { showToast('Отправка доступна только Овнеру проекта!'); return; }
+            const webhook = (document.getElementById('dmWebhookInput')?.value || '').trim();
+            const title = (document.getElementById('dmTitleInput')?.value || '').trim();
+            const text = (document.getElementById('dmTextInput')?.value || '').trim();
+            const img = (document.getElementById('dmImageInput')?.value || '').trim();
+            if (!DM_WEBHOOK_RE.test(webhook)) { status('Ошибка: неверный URL вебхука'); showToast('Укажите корректный URL вебхука Discord (https://discord.com/api/webhooks/...)'); return; }
+            if (!title && !text && !img) { status('Ошибка: сообщение пустое'); showToast('Заполните заголовок, текст или изображение'); return; }
+            if (img && !dmIsHttpUrl(img)) { status('Ошибка: неверная ссылка на изображение'); showToast('Ссылка на изображение должна начинаться с http(s)://'); return; }
+            const links = dmGetLinks();
+            const bad = links.find(l => !dmIsHttpUrl(l.url));
+            if (bad) { status('Ошибка: неверная ссылка'); showToast('Неверная ссылка: ' + bad.url); return; }
+
+            const embed = { color: parseInt(dmColor.slice(1), 16) };
+            if (title) embed.title = title.slice(0, 256);
+            if (text) embed.description = text.slice(0, 4096);
+            if (img) embed.image = { url: img };
+            if (links.length) {
+                let value = links.map(l => `• [${dmMdLabel(l.label || l.url)}](${l.url})`).join('\n');
+                if (value.length > 1024) value = value.slice(0, 1021) + '...';
+                embed.fields = [{ name: 'Ссылки', value }];
+            }
+            const btn = document.getElementById('dmSendBtn');
+            if (btn) btn.disabled = true;
+            status('Отправка...');
+            try {
+                const res = await fetch(webhook.replace(/\/$/, '') + '?wait=true', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ embeds: [embed], allowed_mentions: { parse: [] } })
+                });
+                if (res.ok) {
+                    status('Сообщение отправлено в Discord ✓');
+                    showToast('Сообщение отправлено в Discord!');
+                } else {
+                    const errText = await res.text().catch(() => '');
+                    console.warn('Discord Webhook Error:', res.status, errText);
+                    status(`Ошибка Discord API (${res.status})`);
+                    showToast(`Ошибка отправки (${res.status}). Проверьте вебхук и ссылки.`);
+                }
+            } catch (e) {
+                status('Ошибка соединения при отправке');
+                showToast('Не удалось отправить. Проверьте URL вебхука или подключение к сети.');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
         function switchAdminTab(tabKey) {
             if (tabKey === 'privileges') loadPlayersRegistry();
-            if ((tabKey === 'privileges' || tabKey === 'newspublish' || tabKey === 'announce') && !isCurrentUserHardcodedOwner()) {
+            if ((tabKey === 'privileges' || tabKey === 'newspublish' || tabKey === 'announce' || tabKey === 'discordmsg') && !isCurrentUserHardcodedOwner()) {
                 showToast('Эта вкладка доступна только Овнеру проекта!');
                 return;
             }
@@ -5632,6 +5856,8 @@
                 renderPrivilegesPlayersList();
             } else if (tabKey === 'newspublish') {
                 renderOwnerNewsManageList();
+            } else if (tabKey === 'discordmsg') {
+                dmInitTab();
             }
             refreshIcons();
         }
