@@ -358,7 +358,25 @@
         .dp-embed-img { display: block; width: 100%; border-radius: 4px; margin-top: 12px; max-height: 320px; object-fit: cover; }
         .dp-swatch { width: 28px; height: 28px; border-radius: 8px; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
         .dp-swatch[aria-pressed="true"] { border-color: #fff; }
-        #dpSendBtn:disabled { opacity: 0.6; cursor: wait; }
+        #dpSendBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ---------- Анонсы в Discord ---------- */
+        .dc-ava { width: 46px; height: 46px; flex: none; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            color: rgba(255, 216, 190, 0.6); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); }
+        .dc-ava.is-on { color: #fff; background: #5865f2; border-color: rgba(88, 101, 242, 0.6); box-shadow: 0 10px 24px -12px rgba(88, 101, 242, 0.9); }
+        .dc-ava img { width: 100%; height: 100%; object-fit: cover; }
+        .dc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 13px; border-radius: 12px; font-size: 12px; font-weight: 600;
+            color: rgba(255, 216, 190, 0.9); background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.14); transition: all 0.2s ease; white-space: nowrap; }
+        .dc-btn:hover { color: #fff; border-color: rgba(255, 133, 89, 0.5); background: rgba(255, 98, 66, 0.12); }
+        .dc-btn.primary { color: #fff; border-color: transparent; background: linear-gradient(135deg, #5865f2, #4752c4); box-shadow: 0 10px 22px -12px rgba(88, 101, 242, 0.9); }
+        .dc-btn.primary:hover { filter: brightness(1.1); }
+        .dc-btn.danger { color: #fda4af; border-color: rgba(251, 113, 133, 0.3); background: rgba(244, 63, 94, 0.08); }
+        .dc-btn.danger:hover { color: #fff; background: rgba(244, 63, 94, 0.2); }
+        .dc-btn:disabled, #announceSendBtn:disabled { opacity: 0.55; cursor: not-allowed; filter: none; }
+        .dc-post { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-radius: 16px;
+            background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .dc-post.is-deleted { opacity: 0.55; }
+        @media (max-width: 640px) { .dc-post { flex-direction: column; align-items: stretch; } }
         .rich-editor-content h1, .rich-editor-content h2, .rich-editor-content h3 {
             font-family: 'Onest', sans-serif;
             font-weight: 700;
@@ -2459,15 +2477,55 @@
                         <h2 class="font-display font-bold text-2xl text-white mt-0.5">Пост в Discord</h2>
                         <p class="text-xs text-sunset-200/70 mt-1">Плашка с картинкой, заголовком и текстом — уходит в канал через вебхук</p>
                     </div>
-                    <span class="px-3 py-1 rounded-full bg-sunset-500/15 border border-sunset-400/30 text-sunset-300 font-mono text-[11px]">OWNER</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="dpHeadChip" class="px-3 py-1 rounded-full bg-white/5 border border-white/15 text-sunset-200/80 font-mono text-[11px]">Discord</span>
+                        <span class="px-3 py-1 rounded-full bg-sunset-500/15 border border-sunset-400/30 text-sunset-300 font-mono text-[11px]">OWNER</span>
+                    </div>
                 </div>
+
+                <!-- Подключение к Discord: вебхук хранится на сервере сайта, один на всех Овнеров -->
+                <div id="discordConnCard" class="soft-glass rounded-3xl p-5 sm:p-6 space-y-4 border border-sunset-400/30">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div id="discordConnAvatar" class="dc-ava"></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[11px] font-mono uppercase tracking-wider text-sunset-400">Подключение к Discord</div>
+                            <div id="discordConnTitle" class="font-display font-bold text-white text-base truncate">Загрузка…</div>
+                            <div id="discordConnSub" class="text-[11.5px] text-sunset-200/65"></div>
+                        </div>
+                        <div id="discordConnActions" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div id="discordConnForm" class="hidden space-y-2">
+                        <label for="discordWebhookInput" class="block text-[11px] font-mono text-sunset-300">Ссылка вебхука канала</label>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input id="discordWebhookInput" type="url" autocomplete="off" spellcheck="false" placeholder="https://discord.com/api/webhooks/…" class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
+                            <button id="discordConnectBtn" type="button" onclick="connectDiscordWebhook()" class="dc-btn primary"><span>Подключить</span></button>
+                        </div>
+                        <ol class="text-[11px] text-sunset-200/60 leading-relaxed list-decimal pl-4">
+                            <li>В Discord: настройки канала → «Интеграция» → «Вебхуки» → «Новый вебхук».</li>
+                            <li>«Копировать URL вебхука» и вставить сюда. Ссылка сохранится на сервере сайта для всех Овнеров, в браузере её больше не будет.</li>
+                        </ol>
+                        <div id="discordMigrateNote" class="hidden text-[11px] text-amber-200/90"></div>
+                    </div>
+                    <div id="discordPingRow" class="hidden grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 items-end">
+                        <div>
+                            <label for="discordPingMode" class="block text-[11px] font-mono text-sunset-300 mb-1">Кого можно пинговать</label>
+                            <div class="flex flex-wrap gap-2">
+                                <select id="discordPingMode" onchange="discordPingModeChanged()" class="px-3 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
+                                    <option value="">Никого</option>
+                                    <option value="role">Роль по ID</option>
+                                    <option value="@everyone">@everyone</option>
+                                    <option value="@here">@here</option>
+                                </select>
+                                <input id="discordRoleInput" type="text" inputmode="numeric" autocomplete="off" placeholder="ID роли, например 1184920192837461" class="flex-1 min-w-[180px] px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
+                            </div>
+                            <span class="block text-[10px] text-sunset-200/50 mt-1">Пинг включается галочкой при отправке. ID роли: Настройки сервера → Роли → ПКМ по роли → «Копировать ID роли» (нужен режим разработчика в Discord)</span>
+                        </div>
+                        <button type="button" onclick="saveDiscordPing()" class="dc-btn"><span>Сохранить</span></button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     <form onsubmit="sendDiscordPost(event)" class="lg:col-span-7 soft-glass rounded-3xl p-6 sm:p-7 space-y-4 border border-sunset-400/30">
-                        <div>
-                            <label for="dpWebhookInput" class="block text-[11px] font-mono text-sunset-300 mb-1">Вебхук канала</label>
-                            <input id="dpWebhookInput" type="url" required autocomplete="off" oninput="saveDiscordPostDraft()" placeholder="https://discord.com/api/webhooks/..." class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
-                            <span class="block text-[10px] text-sunset-200/50 mt-1">Канал → Настройки → Интеграции → Вебхуки → Копировать URL. Хранится только в этом браузере.</span>
-                        </div>
                         <div>
                             <label for="dpImageInput" class="block text-[11px] font-mono text-sunset-300 mb-1">Ссылка на картинку</label>
                             <input id="dpImageInput" type="url" autocomplete="off" oninput="saveDiscordPostDraft(); renderDiscordPostPreview()" placeholder="https://...png / jpg / gif" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white font-mono focus:outline-none focus:border-sunset-400">
@@ -2491,6 +2549,10 @@
                             <textarea id="dpTextInput" rows="8" maxlength="4096" oninput="saveDiscordPostDraft(); renderDiscordPostPreview()" placeholder="Поддерживается разметка Discord: **жирный**, *курсив*, __подчёркнутый__, > цитата, [ссылка](https://...)" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-sm text-white leading-relaxed focus:outline-none focus:border-sunset-400 custom-dark-scroll"></textarea>
                             <span id="dpTextCount" class="block text-right text-[10px] font-mono text-sunset-200/50 mt-1">0 / 4096</span>
                         </div>
+                        <label id="dpPingWrap" class="hidden flex items-center gap-2 text-xs text-sunset-200 cursor-pointer select-none">
+                            <input id="dpPingToggle" type="checkbox" class="w-4 h-4 accent-[#ff6242]">
+                            <span id="dpPingLabel"></span>
+                        </label>
                         <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
                             <div id="dpStatusText" class="text-xs font-mono text-sunset-300" aria-live="polite"></div>
                             <div class="flex gap-2">
@@ -2517,6 +2579,14 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="soft-glass rounded-3xl p-6 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <h3 class="font-display font-bold text-lg text-white">Отправленные посты</h3>
+                        <button type="button" onclick="loadDiscordPanel()" class="dc-btn"><span>Обновить</span></button>
+                    </div>
+                    <div id="discordPostsList" class="space-y-2"></div>
                 </div>
             </div>
 
@@ -5731,6 +5801,7 @@
         const DP_COLORS = ['#e03543', '#ff8559', '#f5b942', '#3ba55d', '#38bdf8', '#5865f2', '#a855f7', '#e2e8f0'];
         let dpColor = '#e03543';
         let dpLoaded = false;
+        let dpLegacyWebhook = '';
         function setDiscordPostColor(hex) {
             if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return;
             dpColor = hex.toLowerCase();
@@ -5743,7 +5814,7 @@
         function saveDiscordPostDraft() {
             if (!dpLoaded) return;
             const v = id => (document.getElementById(id)?.value || '');
-            lsSet(DP_DRAFT_KEY, JSON.stringify({ webhook: v('dpWebhookInput').trim(), image: v('dpImageInput').trim(), color: dpColor, title: v('dpTitleInput'), text: v('dpTextInput') }));
+            lsSet(DP_DRAFT_KEY, JSON.stringify({ webhook: dpLegacyWebhook || undefined, image: v('dpImageInput').trim(), color: dpColor, title: v('dpTitleInput'), text: v('dpTextInput') }));
         }
         function loadDiscordPostDraft() {
             const box = document.getElementById('dpColorSwatches');
@@ -5753,8 +5824,9 @@
             if (!dpLoaded) {
                 let d = {};
                 try { d = JSON.parse(lsGet(DP_DRAFT_KEY) || '{}') || {}; } catch (e) { d = {}; }
+                if (d.webhook) dpLegacyWebhook = d.webhook;
                 const set = (id, val) => { const el = document.getElementById(id); if (el && typeof val === 'string') el.value = val; };
-                set('dpWebhookInput', d.webhook); set('dpImageInput', d.image); set('dpTitleInput', d.title); set('dpTextInput', d.text);
+                set('dpImageInput', d.image); set('dpTitleInput', d.title); set('dpTextInput', d.text);
                 dpLoaded = true;
                 setDiscordPostColor(d.color || dpColor);
             }
@@ -5791,46 +5863,261 @@
             saveDiscordPostDraft();
             renderDiscordPostPreview();
         }
+        // ===================== ПОСТ В DISCORD — подключение через сервер сайта =====================
+        // Вебхук канала хранится на сервере авторизации (один на всех Овнеров, в браузер не уходит).
+        // Подключение, проверка, отправка, история и удаление сообщений — через /api/discord/*.
+        const discordState = { cfg: null, loading: false, error: '', showForm: false };
+        const DISCORD_ERRORS = {
+            unauthorized: 'Войдите через Steam заново',
+            forbidden: 'Посты в Discord отправляет только Овнер',
+            not_configured: 'Сначала подключите канал Discord',
+            bad_webhook: 'Это не ссылка вебхука Discord. Она начинается с https://discord.com/api/webhooks/',
+            webhook_gone: 'Discord не принял вебхук: его удалили или ссылка неверная. Создайте новый и подключите заново',
+            discord_unavailable: 'Discord не отвечает, попробуйте позже',
+            bad_role: 'ID роли — это число из 17–20 цифр',
+            bad_image: 'Ссылка на картинку должна начинаться с https://',
+            empty: 'Заполните заголовок, текст или картинку',
+            other_webhook: 'Этот пост отправлен через прежний вебхук — удалите его в Discord вручную',
+            not_found: 'Сообщение не найдено',
+            rate_limited: 'Discord просит подождать пару секунд и повторить',
+            discord_rejected: 'Discord отклонил пост: проверьте текст и картинку',
+        };
+        function discordErrText(err) {
+            if (!err) return 'Ошибка';
+            return DISCORD_ERRORS[err.message] || ('Ошибка: ' + (err.message || 'сеть'));
+        }
+        function discordPingLabel(ping) {
+            if (!ping) return '';
+            if (ping === '@everyone' || ping === '@here') return ping;
+            return 'роль ' + ping;
+        }
+        function dpStatus(text, kind) {
+            const el = document.getElementById('dpStatusText');
+            if (!el) return;
+            el.textContent = text || '';
+            el.className = 'text-xs font-mono ' + (kind === 'err' ? 'text-rose-300' : kind === 'ok' ? 'text-emerald-300' : 'text-sunset-300');
+        }
+        function discordBtnBusy(id, busy, label) {
+            const b = document.getElementById(id);
+            if (!b) return;
+            b.disabled = !!busy;
+            const sp = b.querySelector('span');
+            if (label != null) { if (sp) sp.textContent = label; else b.textContent = label; }
+        }
+        // ссылка вебхука, оставшаяся в этом браузере от прежней версии вкладки
+        function discordLegacyWebhook() {
+            let d = {};
+            try { d = JSON.parse(lsGet(DP_DRAFT_KEY) || '{}') || {}; } catch (e) { d = {}; }
+            return (d.webhook || dpLegacyWebhook || lsGet('eow_discord_webhook_url') || '').trim();
+        }
+        function discordForgetLegacyWebhook() {
+            try {
+                const d = JSON.parse(lsGet(DP_DRAFT_KEY) || '{}') || {};
+                if (d.webhook) { delete d.webhook; lsSet(DP_DRAFT_KEY, JSON.stringify(d)); }
+            } catch (e) { /* черновик битый — не трогаем */ }
+        }
+
+        async function loadDiscordPanel() {
+            if (!isCurrentUserHardcodedOwner()) return;
+            discordState.loading = true; discordState.error = '';
+            renderDiscordPanel();
+            try {
+                discordState.cfg = await eowApi('/api/discord');
+            } catch (err) {
+                discordState.error = err.message === 'not_found' ? 'Сервер авторизации ещё старой версии: обновите воркер (eow-auth-worker.js)' : discordErrText(err);
+            } finally {
+                discordState.loading = false;
+                renderDiscordPanel();
+            }
+        }
+
+        function renderDiscordPanel() {
+            const cfg = discordState.cfg;
+            const on = !!(cfg && cfg.configured);
+            const chip = document.getElementById('dpHeadChip');
+            if (chip) {
+                chip.textContent = discordState.loading && !cfg ? 'Discord: проверка…' : on ? 'Discord: подключено' : 'Discord: не подключено';
+                chip.className = 'px-3 py-1 rounded-full font-mono text-[11px] border ' + (on ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-300' : 'bg-white/5 border-white/15 text-sunset-200/80');
+            }
+            const t = document.getElementById('discordConnTitle'), sub = document.getElementById('discordConnSub');
+            const ava = document.getElementById('discordConnAvatar'), acts = document.getElementById('discordConnActions');
+            const form = document.getElementById('discordConnForm'), pingRow = document.getElementById('discordPingRow');
+            if (!t) return;
+            if (discordState.error) {
+                t.textContent = 'Не удалось получить настройки';
+                sub.textContent = discordState.error;
+            } else if (discordState.loading && !cfg) {
+                t.textContent = 'Загрузка…'; sub.textContent = '';
+            } else if (on) {
+                const w = cfg.webhook || {};
+                t.textContent = w.name ? `Вебхук «${w.name}»` : 'Канал подключён';
+                sub.textContent = (cfg.fromSecret ? 'Задан секретом DISCORD_WEBHOOK_URL в Cloudflare. ' : '')
+                    + (w.channelId ? `Канал ${w.channelId}` : '')
+                    + (cfg.ping ? ` · пинг: ${discordPingLabel(cfg.ping)}` : ' · без пинга')
+                    + (cfg.updatedBy ? ` · настроил ${cfg.updatedBy}` : '');
+            } else {
+                t.textContent = 'Канал не подключён';
+                sub.textContent = 'Вставьте ссылку вебхука канала — она сохранится на сервере сайта для всех Овнеров';
+            }
+            if (ava) {
+                const url = on && cfg.webhook && cfg.webhook.avatarUrl;
+                ava.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="" referrerpolicy="no-referrer">`
+                    : '<svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6" aria-hidden="true"><path d="M20.3 4.4A19.6 19.6 0 0 0 15.4 3l-.6 1.3a18 18 0 0 0-5.5 0L8.7 3a19.6 19.6 0 0 0-4.9 1.5C.7 9.1-.2 13.6.3 18.1a19.8 19.8 0 0 0 6 3l1.3-2.1a12.8 12.8 0 0 1-2-1l.5-.4a14.1 14.1 0 0 0 12 0l.5.4c-.7.4-1.3.7-2 1l1.3 2.1a19.7 19.7 0 0 0 6-3c.6-5.2-.9-9.7-3.6-13.7ZM8.5 15.3c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Zm7 0c-1.2 0-2.2-1.1-2.2-2.4s1-2.4 2.2-2.4 2.2 1.1 2.2 2.4-1 2.4-2.2 2.4Z"/></svg>';
+                ava.classList.toggle('is-on', on);
+            }
+            if (acts) acts.innerHTML = on && !discordState.error ? `
+                <button id="discordTestBtn" type="button" onclick="testDiscordWebhook()" class="dc-btn"><span>Проверить</span></button>
+                <button type="button" onclick="discordState.showForm = !discordState.showForm; renderDiscordPanel()" class="dc-btn"><span>${discordState.showForm ? 'Отмена' : 'Сменить вебхук'}</span></button>
+                ${cfg.fromSecret ? '' : '<button type="button" onclick="disconnectDiscordWebhook()" class="dc-btn danger"><span>Отключить</span></button>'}` : '';
+            if (form) form.classList.toggle('hidden', !!discordState.error || (discordState.loading && !cfg) || (on && !discordState.showForm));
+            if (pingRow) pingRow.classList.toggle('hidden', !on);
+            if (on) {
+                const mode = document.getElementById('discordPingMode'), role = document.getElementById('discordRoleInput');
+                if (mode && role && document.activeElement !== mode && document.activeElement !== role) {
+                    const p = cfg.ping || '';
+                    mode.value = p === '@everyone' || p === '@here' || p === '' ? p : 'role';
+                    role.value = mode.value === 'role' ? p : '';
+                    discordPingModeChanged();
+                }
+            }
+            const legacy = discordLegacyWebhook();
+            const inp = document.getElementById('discordWebhookInput');
+            if (inp && legacy && !on && !inp.value) inp.value = legacy;
+            const note = document.getElementById('discordMigrateNote');
+            if (note) {
+                note.classList.toggle('hidden', !(legacy && !on));
+                note.textContent = legacy && !on ? 'В этом браузере нашлась ссылка вебхука из прежней версии вкладки — она уже вставлена в поле, нажмите «Подключить».' : '';
+            }
+            const pl = document.getElementById('dpPingLabel'), pw = document.getElementById('dpPingWrap');
+            if (pl && pw) {
+                pw.classList.toggle('hidden', !(on && cfg.ping));
+                pl.textContent = on && cfg.ping ? `Пинговать ${discordPingLabel(cfg.ping)}` : '';
+            }
+            const send = document.getElementById('dpSendBtn');
+            if (send && !send.dataset.busy) send.disabled = !on;
+            renderDiscordPosts();
+        }
+
+        function renderDiscordPosts() {
+            const box = document.getElementById('discordPostsList');
+            if (!box) return;
+            const posts = (discordState.cfg && discordState.cfg.posts) || [];
+            if (!posts.length) {
+                box.innerHTML = `<div class="p-4 rounded-2xl bg-dusk-950/60 border border-dashed border-white/15 text-xs text-sunset-200/60">${discordState.loading ? 'Загрузка…' : 'Здесь появятся отправленные посты — со ссылкой на сообщение в Discord.'}</div>`;
+                return;
+            }
+            box.innerHTML = posts.map(p => {
+                const d = new Date(p.createdAt * 1000);
+                const when = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) + ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const deleted = p.status === 'deleted';
+                return `
+                <div class="dc-post${deleted ? ' is-deleted' : ''}">
+                    <div class="min-w-0">
+                        <div class="text-sm font-semibold text-white truncate">${escapeHtml(p.title || 'Без заголовка')}</div>
+                        <div class="text-[11px] text-sunset-200/55">${escapeHtml(when)} · ${escapeHtml(p.author || '')}${p.ping ? ' · пинг: ' + escapeHtml(discordPingLabel(p.ping)) : ''}${deleted ? ' · удалён' + (p.deletedBy ? ' (' + escapeHtml(p.deletedBy) + ')' : '') : ''}</div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${p.link ? `<a href="${escapeHtml(p.link)}" target="_blank" rel="noopener noreferrer" class="dc-btn"><span>Открыть ↗</span></a>` : ''}
+                        ${deleted ? '' : `<button type="button" onclick="deleteDiscordPost(${Number(p.id)})" class="dc-btn danger"><span>Удалить из Discord</span></button>`}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function discordPingModeChanged() {
+            const mode = document.getElementById('discordPingMode'), role = document.getElementById('discordRoleInput');
+            if (mode && role) role.classList.toggle('hidden', mode.value !== 'role');
+        }
+
+        async function connectDiscordWebhook() {
+            const inp = document.getElementById('discordWebhookInput');
+            const url = (inp && inp.value || '').trim();
+            if (!url) { showToast('Вставьте ссылку вебхука канала'); return; }
+            discordBtnBusy('discordConnectBtn', true, 'Проверяем…');
+            try {
+                discordState.cfg = await eowApi('/api/discord/config', { method: 'POST', body: JSON.stringify({ webhookUrl: url }) });
+                discordState.showForm = false;
+                if (inp) inp.value = '';
+                discordForgetLegacyWebhook();
+                dpLegacyWebhook = '';
+                lsSet('eow_discord_webhook_url', null);
+                showToast('Канал Discord подключён. Нажмите «Проверить», чтобы отправить проверочное сообщение');
+            } catch (err) {
+                showToast(discordErrText(err));
+            } finally {
+                discordBtnBusy('discordConnectBtn', false, 'Подключить');
+                renderDiscordPanel();
+            }
+        }
+
+        async function disconnectDiscordWebhook() {
+            if (!confirm('Отключить канал Discord? Отправлять посты будет нельзя, пока не подключите вебхук снова.')) return;
+            try {
+                discordState.cfg = await eowApi('/api/discord/config', { method: 'POST', body: JSON.stringify({ webhookUrl: '' }) });
+                showToast('Канал Discord отключён');
+            } catch (err) { showToast(discordErrText(err)); }
+            renderDiscordPanel();
+        }
+
+        async function saveDiscordPing() {
+            const mode = document.getElementById('discordPingMode'), role = document.getElementById('discordRoleInput');
+            const ping = mode.value === 'role' ? (role.value || '').trim() : mode.value;
+            if (mode.value === 'role' && !ping) { showToast('Вставьте ID роли'); return; }
+            try {
+                discordState.cfg = await eowApi('/api/discord/config', { method: 'POST', body: JSON.stringify({ ping }) });
+                showToast(ping ? `Пинг: ${discordPingLabel(discordState.cfg.ping)} — включается галочкой при отправке` : 'Посты будут без пинга');
+            } catch (err) { showToast(discordErrText(err)); }
+            renderDiscordPanel();
+        }
+
+        async function testDiscordWebhook() {
+            discordBtnBusy('discordTestBtn', true, 'Отправляем…');
+            try {
+                await eowApi('/api/discord/test', { method: 'POST', body: '{}' });
+                showToast('Проверочное сообщение отправлено — загляните в канал Discord');
+            } catch (err) { showToast(discordErrText(err)); }
+            discordBtnBusy('discordTestBtn', false, 'Проверить');
+        }
+
         async function sendDiscordPost(ev) {
             if (ev) ev.preventDefault();
             if (!isCurrentUserHardcodedOwner()) { showToast('Отправка доступна только Овнеру проекта'); return; }
-            const st = document.getElementById('dpStatusText');
-            const btn = document.getElementById('dpSendBtn');
-            const webhook = (document.getElementById('dpWebhookInput')?.value || '').trim();
+            const cfg = discordState.cfg;
+            if (!cfg || !cfg.configured) { dpStatus('Сначала подключите канал Discord', 'err'); return; }
             const image = (document.getElementById('dpImageInput')?.value || '').trim();
             const title = (document.getElementById('dpTitleInput')?.value || '').trim();
             const text = (document.getElementById('dpTextInput')?.value || '').trim();
-            if (!/^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+/i.test(webhook)) {
-                if (st) st.textContent = 'Нужна ссылка вебхука Discord: https://discord.com/api/webhooks/…';
-                return;
-            }
-            if (!title && !text && !image) { if (st) st.textContent = 'Заполните заголовок, текст или картинку'; return; }
-            if (image && !/^https?:\/\//i.test(image)) { if (st) st.textContent = 'Ссылка на картинку должна начинаться с https://'; return; }
-            const embed = { color: parseInt(dpColor.slice(1), 16) };
-            if (title) embed.title = title.slice(0, 256);
-            if (text) embed.description = text.slice(0, 4096);
-            if (image) embed.image = { url: image };
-            if (btn) btn.disabled = true;
-            if (st) st.textContent = 'Отправка…';
+            if (!title && !text && !image) { dpStatus('Заполните заголовок, текст или картинку', 'err'); return; }
+            if (image && !/^https?:\/\//i.test(image)) { dpStatus('Ссылка на картинку должна начинаться с https://', 'err'); return; }
+            const pingEl = document.getElementById('dpPingToggle');
+            const btn = document.getElementById('dpSendBtn');
+            if (btn) { btn.dataset.busy = '1'; btn.disabled = true; }
+            dpStatus('Отправка…');
             try {
-                const res = await fetch(webhook + (webhook.includes('?') ? '&' : '?') + 'wait=true', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: 'Eclipse of War', embeds: [embed], allowed_mentions: { parse: [] } }),
-                });
-                if (res.ok) {
-                    if (st) st.textContent = 'Отправлено в Discord';
-                    showToast('Пост отправлен в Discord');
-                } else {
-                    let msg = '';
-                    try { const j = await res.json(); msg = j && j.message ? ': ' + j.message : ''; } catch (e) { /* ignore */ }
-                    if (st) st.textContent = 'Discord отклонил пост (' + res.status + ')' + msg;
-                }
-            } catch (e) {
-                if (st) st.textContent = 'Нет связи с Discord — проверьте ссылку вебхука';
+                const res = await eowApi('/api/discord/post', { method: 'POST', body: JSON.stringify({
+                    title, text, imageUrl: image, color: dpColor, ping: !!(pingEl && pingEl.checked && cfg.ping),
+                }) });
+                if (res.post && discordState.cfg) discordState.cfg.posts = [res.post, ...(discordState.cfg.posts || [])].slice(0, 30);
+                dpStatus('Отправлено в Discord', 'ok');
+                showToast('Пост отправлен в Discord');
+            } catch (err) {
+                dpStatus(discordErrText(err), 'err');
+                if (err.message === 'webhook_gone') loadDiscordPanel();
             } finally {
-                if (btn) btn.disabled = false;
+                if (btn) { delete btn.dataset.busy; btn.disabled = !(discordState.cfg && discordState.cfg.configured); }
+                renderDiscordPosts();
             }
+        }
+
+        async function deleteDiscordPost(id) {
+            const p = ((discordState.cfg && discordState.cfg.posts) || []).find(x => x.id === id);
+            if (!confirm(`Удалить пост «${p ? p.title : ''}» из канала Discord?`)) return;
+            try {
+                const res = await eowApi('/api/discord/posts/' + id + '/delete', { method: 'POST', body: '{}' });
+                if (discordState.cfg && res.post) discordState.cfg.posts = discordState.cfg.posts.map(x => x.id === id ? res.post : x);
+                showToast('Пост удалён из Discord');
+            } catch (err) { showToast(discordErrText(err)); }
+            renderDiscordPosts();
         }
 
         function switchAdminTab(tabKey) {
@@ -5861,6 +6148,7 @@
                 renderOwnerNewsManageList();
             } else if (tabKey === 'discordpost') {
                 loadDiscordPostDraft();
+                loadDiscordPanel();
             }
             refreshIcons();
         }
