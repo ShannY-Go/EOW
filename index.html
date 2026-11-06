@@ -2160,7 +2160,7 @@
                     <div id="statCharPlaytime" class="font-display font-bold text-2xl sm:text-3xl text-white">148 ч.</div>
                 </div>
                 <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                    <span class="text-xs text-sunset-200/75 font-medium">Боевые вылеты / Контракты</span>
+                    <span id="statCharEventsLabel" class="text-xs text-sunset-200/75 font-medium">Боевые вылеты / Контракты</span>
                     <div id="statCharEventsCount" class="font-display font-bold text-2xl sm:text-3xl text-white">24 операции</div>
                     <span id="statCharJoinedDate" class="text-[11px] text-sunset-200/60 font-mono">В строю с 12.08.2026</span>
                 </div>
@@ -2191,7 +2191,7 @@
                                 <div id="statCharDivision" class="font-display font-bold text-sm text-white mt-0.5">Штурмовой Корпус</div>
                             </div>
                             <div class="p-4 rounded-2xl bg-dusk-950/65 border border-white/10">
-                                <span class="text-[11px] text-sunset-200/60">Показатели HP / ARM</span>
+                                <span id="statCharVitalsLabel" class="text-[11px] text-sunset-200/60">Показатели HP / ARM</span>
                                 <div id="statCharVitals" class="font-display font-bold text-sm text-sunset-200 mt-0.5">120 HP / 100 ARM</div>
                             </div>
                             <div class="p-4 rounded-2xl bg-dusk-950/65 border border-white/10">
@@ -6280,7 +6280,11 @@
             activeProfileCharIdx = idx;
             renderProfileCharacters();
 
-            document.getElementById('activeCharNameTag').textContent = ch.name;
+            document.getElementById('activeCharNameTag').textContent = ch.tag || ch.name;
+            const vLbl = document.getElementById('statCharVitalsLabel');
+            if (vLbl) vLbl.textContent = ch.vitalsLabel || 'Показатели HP / ARM';
+            const eLbl = document.getElementById('statCharEventsLabel');
+            if (eLbl) eLbl.textContent = ch.eventsLabel || 'Боевые вылеты / Контракты';
             const lvlEl = document.getElementById('statCharLevel');
             if (lvlEl) lvlEl.textContent = ch.level;
             document.getElementById('statCharPlaytime').textContent = ch.playtime;
@@ -8912,22 +8916,32 @@
         const fmtHours = s => Math.floor((s | 0) / 3600).toLocaleString('ru-RU') + ' ч.';
         const fmtNum = n => Number(n || 0).toLocaleString('ru-RU');
 
+        const ruPlural = (n, one, few, many) => { n = Math.abs(n | 0) % 100; const d = n % 10; return n > 10 && n < 20 ? many : d === 1 ? one : d >= 2 && d <= 4 ? few : many; };
+        const fmtDay = t => new Date(t * 1000).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
         function gameCharToProfile(c) {
             const unitTitle = c.unitTitle || 'Без подразделения';
+            const st = c.stats && typeof c.stats === 'object' ? c.stats : null;     // есть у сервера сайта v2
+            const spec = c.spec || '';
+            const specLine = [spec, c.position && c.position !== spec ? c.position : ''].filter(Boolean).join(' · ') || c.profession || '—';
+            const pct = c.xpNeed > 0 ? Math.min(99, Math.floor((c.xp | 0) / c.xpNeed * 100)) : null;
+            const lvl = c.levelMax && (c.level | 0) >= c.levelMax ? `${c.level} ур. (макс.)` : (c.level ? `${c.level} ур.` + (pct != null ? ` (${pct}% XP)` : '') : '0 ур.');
+            const extras = [c.jediClass, c.blood ? 'Кровь ' + c.blood : ''].filter(Boolean).join(' · ');
             return {
-                name: c.name, unitKey: c.unit || unitKeyFromDivision(unitTitle),
-                roleDesc: [c.profession || c.rank, unitTitle].filter(Boolean).join(' · '),
-                level: c.level ? `${c.level} ур.` : '—',
+                name: c.name, tag: [c.rank, c.name].filter(Boolean).join(' | '), unitKey: c.unit || unitKeyFromDivision(unitTitle),
+                roleDesc: [c.online ? '● В игре' : '', c.profession || c.rank, unitTitle].filter(Boolean).join(' · '),
+                level: lvl,
                 playtime: fmtHours(c.playtime),
                 reputation: `Репутация: ${c.reputation > 0 ? '+' : ''}${c.reputation | 0}`,
-                events: c.deaths != null ? `${fmtNum(c.deaths)} смертей` : '—',
-                joined: c.joined ? 'В строю с ' + new Date(c.joined * 1000).toLocaleDateString('ru-RU') : '—',
+                eventsLabel: st ? 'Операции / Задания' : 'Боевые вылеты / Контракты',
+                events: st ? `${fmtNum(st.ops)} ${ruPlural(st.ops, 'операция', 'операции', 'операций')} · ${fmtNum(st.tasks)} ${ruPlural(st.tasks, 'задание', 'задания', 'заданий')}` : '—',
+                joined: c.online ? '● Сейчас в игре' : (c.lastSeen ? 'Был в игре ' + fmtDay(c.lastSeen) : (c.joined ? 'На сайте с ' + fmtDay(c.joined) : '—')),
                 kills: `${fmtNum(c.kills)} ед.`,
                 rank: c.rank || '—',
                 credits: `${fmtNum(c.credits)} CR`,
                 division: unitTitle,
-                vitals: c.profession || '—',
-                discipline: `${c.reprimands | 0} выговоров`,
+                vitalsLabel: st ? 'Специализация / должность' : 'Специализация',
+                vitals: extras ? `${specLine} — ${extras}` : specLine,
+                discipline: `${c.reprimands | 0} ${ruPlural(c.reprimands, 'выговор', 'выговора', 'выговоров')}`,
                 clearance: c.updatedAt ? 'Обновлено ' + new Date(c.updatedAt * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
             };
         }

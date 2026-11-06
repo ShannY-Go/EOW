@@ -214,7 +214,8 @@ local function build(data)
         local sid64 = sid64Of(a.steam_id, a.community_id)
         if sid64 then
             byPid[tonumber(a.id) or -1] = { sid64 = sid64, sid2 = tostring(a.steam_id or ""), chars = {},
-                donate = data.donate[tostring(a.steam_id or "")], seen = data.seen[tostring(a.steam_id or "")] }
+                donate = data.donate[tostring(a.steam_id or "")] or 0,      -- нет записи — баланс 0
+                seen = data.seen[tostring(a.steam_id or "")] }
         end
     end
 
@@ -244,7 +245,7 @@ local function build(data)
                 rank = clean(c.pripiska, 32),
                 unit = unitKeyOf(teamName, spec),
                 unitTitle = clean(teamName, 60),
-                profession = spec .. ((position ~= "" and spec ~= "") and (" · " .. position) or position),
+                profession = (position == "" or position == spec) and spec or (spec ~= "" and (spec .. " · " .. position) or position),
                 level = level,
                 xp = num(prog.xp),
                 credits = num(live.money or data.money[id]),

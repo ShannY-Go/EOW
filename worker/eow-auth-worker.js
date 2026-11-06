@@ -197,6 +197,8 @@ async function ensureSchema(db) {
         donate INTEGER NOT NULL DEFAULT 0,
         updated_at INTEGER NOT NULL DEFAULT 0
     )`).run();
+    // v2 синхронизации: подробности персонажа (номер, должность, кровь, статистика, онлайн) одним JSON
+    try { await db.prepare("ALTER TABLE game_characters ADD COLUMN extra TEXT NOT NULL DEFAULT '{}'").run(); } catch (e) { /* колонка уже есть */ }
     schemaReady = true;
 }
 
@@ -1361,6 +1363,17 @@ const GAME_MAX_CHARS = 500;
 const gText = (v, n) => cleanName(String(v == null ? '' : v)).slice(0, n);
 const gInt = (v, max = 2e9) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(max, n)) : 0; };
 
+// подробности персонажа (аддон eow_site_sync v2); всё, чего нет, — пустое
+function gameExtra(c) {
+    const st = isObj(c.stats) ? c.stats : {};
+    return JSON.stringify({
+        number: gText(c.number, 8), callsign: gText(c.callsign, 48), spec: gText(c.spec, 48), position: gText(c.position, 48),
+        blood: gText(c.blood, 16), levelMax: gInt(c.levelMax, 100000), xpNeed: gInt(c.xpNeed), jediClass: gText(c.jediClass, 32),
+        stats: { damage: gInt(st.damage), heals: gInt(st.heals), repairs: gInt(st.repairs), ops: gInt(st.ops), tasks: gInt(st.tasks), hacks: gInt(st.hacks) },
+        online: c.online === true, lastSeen: gInt(c.lastSeen),
+    });
+}
+
 function gameKeyOk(request, env) {
     const key = env.GAME_SYNC_KEY || env.LOGS_INGEST_KEY;
     if (!key || String(key).length < 16) return null;
@@ -1391,7 +1404,7 @@ async function handleGameSync(request, env) {
         if (unit && !REPORT_UNIT_RE.test(unit)) unit = '';
         rows.push([sid, cid, gText(c.name, 64) || 'Без имени', gText(c.rank, 48), unit, gText(c.unitTitle, 64), gText(c.profession, 64),
             gInt(c.level, 100000), gInt(c.xp), gInt(c.credits), gInt(c.playtime), gInt(c.kills), gInt(c.deaths),
-            Math.max(-1e6, Math.min(1e6, Math.floor(Number(c.reputation) || 0))), gInt(c.reprimands, 100), gInt(c.joined) || t, t]);
+            Math.max(-1e6, Math.min(1e6, Math.floor(Number(c.reputation) || 0))), gInt(c.reprimands, 100), gInt(c.joined) || t, t, gameExtra(c)]);
     }
     const stmts = [];
     // удаляем персонажей, которых больше нет у игрока (сервер прислал полный список по этим SteamID)
@@ -1401,14 +1414,15 @@ async function handleGameSync(request, env) {
     }
     if (rows.length) {
         stmts.push(env.DB.prepare(`INSERT INTO game_characters (steamid, char_id, name, rank, unit, unit_title, profession, level, xp, credits,
-                playtime, kills, deaths, reputation, reprimands, first_seen, updated_at)
+                playtime, kills, deaths, reputation, reprimands, first_seen, updated_at, extra)
             SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]'), json_extract(value,'$[3]'), json_extract(value,'$[4]'),
                 json_extract(value,'$[5]'), json_extract(value,'$[6]'), json_extract(value,'$[7]'), json_extract(value,'$[8]'), json_extract(value,'$[9]'),
                 json_extract(value,'$[10]'), json_extract(value,'$[11]'), json_extract(value,'$[12]'), json_extract(value,'$[13]'), json_extract(value,'$[14]'),
-                json_extract(value,'$[15]'), json_extract(value,'$[16]') FROM json_each(?) WHERE true
+                json_extract(value,'$[15]'), json_extract(value,'$[16]'), json_extract(value,'$[17]') FROM json_each(?) WHERE true
             ON CONFLICT(steamid, char_id) DO UPDATE SET name = excluded.name, rank = excluded.rank, unit = excluded.unit, unit_title = excluded.unit_title,
                 profession = excluded.profession, level = excluded.level, xp = excluded.xp, credits = excluded.credits, playtime = excluded.playtime,
-                kills = excluded.kills, deaths = excluded.deaths, reputation = excluded.reputation, reprimands = excluded.reprimands, updated_at = excluded.updated_at`)
+                kills = excluded.kills, deaths = excluded.deaths, reputation = excluded.reputation, reprimands = excluded.reprimands, updated_at = excluded.updated_at,
+                extra = excluded.extra`)
             .bind(JSON.stringify(rows)));
     }
     const accRows = accounts.filter(a => a && /^7656119\d{10}$/.test(String(a.steamid || ''))).map(a => [String(a.steamid), gInt(a.donate), t]);
@@ -1422,10 +1436,16 @@ async function handleGameSync(request, env) {
 }
 
 function gameCharView(x) {
+    let extra = {};
+    try { extra = JSON.parse(x.extra || '{}'); } catch (e) { extra = {}; }
+    if (!isObj(extra)) extra = {};
     return {
+        ...extra,
         id: x.char_id, name: x.name, rank: x.rank, unit: x.unit, unitTitle: x.unit_title, profession: x.profession,
         level: x.level, xp: x.xp, credits: x.credits, playtime: x.playtime, kills: x.kills, deaths: x.deaths,
         reputation: x.reputation, reprimands: x.reprimands, joined: x.first_seen, updatedAt: x.updated_at,
+        // «в игре» — только если сервер присылал данные недавно (онлайн обновляется каждые 5 минут)
+        online: extra.online === true && now() - (x.updated_at | 0) < 900,
     };
 }
 
