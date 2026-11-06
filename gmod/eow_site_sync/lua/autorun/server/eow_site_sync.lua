@@ -9,7 +9,9 @@
     Что уходит на сайт по каждому персонажу:
       имя и номер, звание, подразделение и специализация, должность, группа крови, уровень и опыт,
       кредиты, наигранное время, убийства NPC, урон, лечение, ремонт, операции, класс джедая,
-      последний вход, в игре ли сейчас. Пароли, IP, история/цитата анкеты и инвентарь — НЕ уходят.
+      последний вход, в игре ли сейчас. По аккаунту — баланс доната, слоты персонажей, бусты x2
+      и история пополнений и открытий кейсов (видит только сам игрок).
+      Пароли, IP, ссылки на оплату, история/цитата анкеты и инвентарь — НЕ уходят.
 
     Когда отправляется:
       - при старте сервера (через минуту после подключения к базе) — все персонажи из базы;
@@ -126,7 +128,8 @@ local function load(sids2, cb)
     local where = sids2 and (" WHERE steam_id IN (" .. inList(sids2) .. ")") or ""
     q("SELECT id, steam_id, community_id, player FROM nwt_p_data" .. where .. ";", function(accs)
         if not accs then return cb(nil) end
-        local data = { accounts = accs, chars = {}, progress = {}, money = {}, profile = {}, donate = {}, seen = {} }
+        local data = { accounts = accs, chars = {}, progress = {}, money = {}, profile = {}, donate = {}, seen = {},
+                       shop = {}, payments = {}, opens = {} }
         if #accs == 0 then return cb(data) end
         local pids = {}
         for _, a in ipairs(accs) do pids[#pids + 1] = tonumber(a.id) end
@@ -138,7 +141,7 @@ local function load(sids2, cb)
             for _, c in ipairs(chars) do ids[#ids + 1] = tonumber(c.character_id) end
             local idWhere = sids2 and (#ids > 0 and (" WHERE character_id IN (" .. inList(ids) .. ")") or " WHERE 1 = 0") or ""
 
-            local pending = 5
+            local pending = 8
             local function done() pending = pending - 1 if pending == 0 then cb(data) end end
             q("SELECT character_id, data FROM nwt_char_progress" .. idWhere .. ";", function(r)
                 for _, x in ipairs(r or {}) do data.progress[tonumber(x.character_id) or -1] = x.data end done()
@@ -154,6 +157,29 @@ local function load(sids2, cb)
             end, true)
             q("SELECT steam_id, last_seen FROM nwt_p_seen" .. where .. ";", function(r)
                 for _, x in ipairs(r or {}) do data.seen[tostring(x.steam_id)] = tonumber(x.last_seen) end done()
+            end, true)
+            -- магазин (modules/shop): доп. слоты и бусты
+            q("SELECT steam_id, extra_slots, xp_boost_until, cr_boost_until FROM eow_shop_account" .. where .. ";", function(r)
+                for _, x in ipairs(r or {}) do data.shop[tostring(x.steam_id)] = x end done()
+            end, true)
+            -- пополнения (modules/donate_pay): только сумма, статус и время — без ссылок и номеров счетов
+            local lim = sids2 and 200 or 3000
+            q("SELECT steam_id, amount_rub, donate, status, created_at, paid_at FROM eow_payments" .. where .. " ORDER BY id DESC LIMIT " .. lim .. ";", function(r)
+                for _, x in ipairs(r or {}) do
+                    local k = tostring(x.steam_id)
+                    data.payments[k] = data.payments[k] or {}
+                    table.insert(data.payments[k], x)
+                end
+                done()
+            end, true)
+            -- открытия кейсов (modules/shop)
+            q("SELECT steam_id, case_id, price, paid_with, kind, value, amount, created_at FROM eow_shop_opens" .. where .. " ORDER BY id DESC LIMIT " .. lim .. ";", function(r)
+                for _, x in ipairs(r or {}) do
+                    local k = tostring(x.steam_id)
+                    data.opens[k] = data.opens[k] or {}
+                    table.insert(data.opens[k], x)
+                end
+                done()
             end, true)
         end)
     end)
@@ -204,18 +230,57 @@ local function liveFor(ply, id)
     return live
 end
 
--- data из load() → список аккаунтов { sid64, chars = {...}, donate }
+-- история пополнений и кейсов аккаунта, новые сверху, не больше 15
+local PAY_SHOW = { paid = true, active = true, expired = true, error = true, credit_error = true }
+function S.History(payments, opens)
+    local out = {}
+    for _, p in ipairs(payments or {}) do
+        local st = tostring(p.status or "")
+        if PAY_SHOW[st] then
+            out[#out + 1] = { t = "topup", at = num(tonumber(p.paid_at) or p.created_at), rub = num(p.amount_rub), donate = num(p.donate), status = st }
+        end
+    end
+    local SH = EOW_SHOP
+    for _, o in ipairs(opens or {}) do
+        local case = SH and SH.CaseById and SH.CaseById[o.case_id]
+        local reward = ""
+        if SH and SH.RewardName then
+            local ok, r = pcall(SH.RewardName, o.kind, o.value, tonumber(o.amount))
+            if ok and r then reward = tostring(r) end
+        end
+        out[#out + 1] = { t = "case", at = num(o.created_at), title = clean(case and case.name or o.case_id, 48),
+            price = num(o.price), paid = tostring(o.paid_with or "donate") == "key" and "key" or "donate", reward = clean(reward, 64) }
+    end
+    table.sort(out, function(a, b) return a.at > b.at end)
+    for i = #out, 16, -1 do out[i] = nil end
+    return out
+end
+
+-- data из load() → список аккаунтов { sid64, chars = {...}, donate, info }
 local function build(data)
     local online = {}
     for _, p in ipairs(player.GetHumans()) do online[p:SteamID64() or ""] = p end
 
     local byPid = {}
+    local SH = EOW_SHOP
     for _, a in ipairs(data.accounts) do
         local sid64 = sid64Of(a.steam_id, a.community_id)
         if sid64 then
-            byPid[tonumber(a.id) or -1] = { sid64 = sid64, sid2 = tostring(a.steam_id or ""), chars = {},
-                donate = data.donate[tostring(a.steam_id or "")] or 0,      -- нет записи — баланс 0
-                seen = data.seen[tostring(a.steam_id or "")] }
+            local sid2 = tostring(a.steam_id or "")
+            local shop = data.shop[sid2] or {}
+            local ply = online[sid64]
+            byPid[tonumber(a.id) or -1] = { sid64 = sid64, sid2 = sid2, chars = {},
+                donate = data.donate[sid2] or 0,      -- нет записи — баланс 0
+                seen = data.seen[sid2],
+                info = {
+                    slotsExtra = num(shop.extra_slots),
+                    -- базовые слоты зависят от группы игрока — известны, только пока он на сервере
+                    slotsBase = (IsValid(ply) and SH and SH.BaseSlots) and num(SH.BaseSlots(ply)) or nil,
+                    slotsMax = SH and SH.MaxSlots or nil,
+                    xpBoostUntil = num(shop.xp_boost_until),
+                    crBoostUntil = num(shop.cr_boost_until),
+                    history = S.History(data.payments[sid2], data.opens[sid2]),
+                } }
         end
     end
 
@@ -276,7 +341,7 @@ end
 
 -- ---------------------------------------------------------------- отправка
 local function sigOf(acc)
-    local parts = { tostring(acc.donate or "-") }
+    local parts = { tostring(acc.donate or "-"), "info:" .. util.TableToJSON(acc.info or {}) }
     for _, c in ipairs(acc.chars) do parts[#parts + 1] = util.TableToJSON(c) end
     table.sort(parts)
     return util.CRC(table.concat(parts, "\n")) .. ":" .. #parts
@@ -293,7 +358,9 @@ local function post(batch, done)
     for _, acc in ipairs(batch) do
         payload.replace[#payload.replace + 1] = acc.sid64
         for _, c in ipairs(acc.chars) do payload.characters[#payload.characters + 1] = c end
-        if acc.donate ~= nil then payload.accounts[#payload.accounts + 1] = { steamid = acc.sid64, donate = num(acc.donate) } end
+        local a = { steamid = acc.sid64, donate = num(acc.donate) }
+        for k, v in pairs(acc.info or {}) do a[k] = v end
+        payload.accounts[#payload.accounts + 1] = a
     end
     S.Stat.requests = S.Stat.requests + 1
     HTTP({

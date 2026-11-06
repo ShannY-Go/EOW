@@ -199,6 +199,8 @@ async function ensureSchema(db) {
     )`).run();
     // v2 синхронизации: подробности персонажа (номер, должность, кровь, статистика, онлайн) одним JSON
     try { await db.prepare("ALTER TABLE game_characters ADD COLUMN extra TEXT NOT NULL DEFAULT '{}'").run(); } catch (e) { /* колонка уже есть */ }
+    // аккаунт: слоты персонажей, бусты, история пополнений и кейсов
+    try { await db.prepare("ALTER TABLE game_accounts ADD COLUMN extra TEXT NOT NULL DEFAULT '{}'").run(); } catch (e) { /* колонка уже есть */ }
     schemaReady = true;
 }
 
@@ -1374,6 +1376,24 @@ function gameExtra(c) {
     });
 }
 
+// данные аккаунта (аддон eow_site_sync v3). Ключ, которого нет, не пишется — остаётся прежнее значение
+// (базовые слоты известны, только пока игрок на сервере).
+const GAME_PAY_STATUSES = ['paid', 'active', 'expired', 'error', 'credit_error'];
+function gameAccountExtra(a) {
+    const x = {};
+    if (a.slotsExtra != null) x.slotsExtra = gInt(a.slotsExtra, 100);
+    if (a.slotsBase != null) x.slotsBase = gInt(a.slotsBase, 100);
+    if (a.slotsMax != null) x.slotsMax = gInt(a.slotsMax, 100);
+    if (a.xpBoostUntil != null) x.xpBoostUntil = gInt(a.xpBoostUntil);
+    if (a.crBoostUntil != null) x.crBoostUntil = gInt(a.crBoostUntil);
+    if (Array.isArray(a.history)) {
+        x.history = a.history.slice(0, 20).filter(isObj).map(h => h.t === 'case'
+            ? { t: 'case', at: gInt(h.at), title: gText(h.title, 48), price: gInt(h.price, 1e7), paid: h.paid === 'key' ? 'key' : 'donate', reward: gText(h.reward, 64) }
+            : { t: 'topup', at: gInt(h.at), rub: gInt(h.rub, 1e7), donate: gInt(h.donate, 1e7), status: GAME_PAY_STATUSES.includes(h.status) ? h.status : 'paid' });
+    }
+    return JSON.stringify(x);
+}
+
 function gameKeyOk(request, env) {
     const key = env.GAME_SYNC_KEY || env.LOGS_INGEST_KEY;
     if (!key || String(key).length < 16) return null;
@@ -1425,11 +1445,12 @@ async function handleGameSync(request, env) {
                 extra = excluded.extra`)
             .bind(JSON.stringify(rows)));
     }
-    const accRows = accounts.filter(a => a && /^7656119\d{10}$/.test(String(a.steamid || ''))).map(a => [String(a.steamid), gInt(a.donate), t]);
+    const accRows = accounts.filter(a => a && /^7656119\d{10}$/.test(String(a.steamid || ''))).map(a => [String(a.steamid), gInt(a.donate), t, gameAccountExtra(a)]);
     if (accRows.length) {
-        stmts.push(env.DB.prepare(`INSERT INTO game_accounts (steamid, donate, updated_at)
-            SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]') FROM json_each(?) WHERE true
-            ON CONFLICT(steamid) DO UPDATE SET donate = excluded.donate, updated_at = excluded.updated_at`).bind(JSON.stringify(accRows)));
+        stmts.push(env.DB.prepare(`INSERT INTO game_accounts (steamid, donate, updated_at, extra)
+            SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]'), json_extract(value,'$[3]') FROM json_each(?) WHERE true
+            ON CONFLICT(steamid) DO UPDATE SET donate = excluded.donate, updated_at = excluded.updated_at,
+                extra = json_patch(CASE WHEN json_valid(game_accounts.extra) THEN game_accounts.extra ELSE '{}' END, excluded.extra)`).bind(JSON.stringify(accRows)));
     }
     if (stmts.length) await env.DB.batch(stmts);
     return json(request, { ok: true, characters: rows.length, accounts: accRows.length, skipped });
@@ -1453,10 +1474,17 @@ async function handleMyGame(request, env) {
     const row = await authUser(request, env);
     if (!row) return json(request, { error: 'unauthorized' }, 401);
     const { results } = await env.DB.prepare('SELECT * FROM game_characters WHERE steamid = ? ORDER BY updated_at DESC LIMIT 20').bind(row.steamid).all();
-    const acc = await env.DB.prepare('SELECT donate, updated_at FROM game_accounts WHERE steamid = ?').bind(row.steamid).first();
+    const acc = await env.DB.prepare('SELECT donate, updated_at, extra FROM game_accounts WHERE steamid = ?').bind(row.steamid).first();
+    let ax = {};
+    if (acc) { try { ax = JSON.parse(acc.extra || '{}'); } catch (e) { ax = {}; } if (!isObj(ax)) ax = {}; }
     return json(request, {
         characters: (results || []).map(gameCharView),
-        account: acc ? { donateBalance: acc.donate | 0, updatedAt: acc.updated_at } : null,
+        account: acc ? {
+            donateBalance: acc.donate | 0, updatedAt: acc.updated_at,
+            slotsBase: ax.slotsBase ?? null, slotsExtra: ax.slotsExtra ?? 0, slotsMax: ax.slotsMax ?? null,
+            xpBoostUntil: ax.xpBoostUntil || 0, crBoostUntil: ax.crBoostUntil || 0,
+            history: Array.isArray(ax.history) ? ax.history : [],
+        } : null,
     });
 }
 
