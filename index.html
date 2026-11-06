@@ -342,6 +342,39 @@
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 133, 89, 0.4) transparent;
         }
+        /* ---------- Рапортация (пользовательский режим) ---------- */
+        .rep-shell { position: relative; }
+        .rep-content { transition: filter .45s var(--eow-ease), opacity .45s ease; }
+        .rep-shell.rep-locked .rep-content { filter: blur(9px) saturate(.7); opacity: .55; pointer-events: none; user-select: none; }
+        .rep-lock { position: absolute; inset: 0; z-index: 5; display: none; align-items: flex-start; justify-content: center; padding: 5rem 1rem 2rem; }
+        .rep-shell.rep-locked .rep-lock { display: flex; }
+        .rep-lock-card { animation: repSheetUp .55s var(--eow-ease) both; }
+        .rep-char-pill { transition: background .2s, border-color .2s, color .2s; }
+        .rep-char-pill.active { background: linear-gradient(135deg, rgba(229,57,53,.32), rgba(255,133,89,.22)); border-color: rgba(255,133,89,.75); color: #fff; }
+        .rep-card { transition: transform .25s var(--eow-ease), border-color .25s; }
+        .rep-card:hover { transform: translateY(-2px); border-color: rgba(255,133,89,.45); }
+        @keyframes repSheetUp {
+            0% { opacity: 0; transform: translateY(70px) scale(.97); filter: blur(6px); }
+            60% { opacity: 1; transform: translateY(-6px) scale(1.005); filter: blur(0); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes repSheetDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(60px) scale(.97); } }
+        #reportComposeModal.flex, #reportViewModal.flex { animation: modalBackdropIn .25s ease forwards; }
+        #reportComposeModal.flex > div, #reportViewModal.flex > div {
+            animation: repSheetUp .55s var(--eow-ease) both;
+            max-height: calc(100svh - 2rem); overflow-y: auto; overscroll-behavior: contain;
+            scrollbar-width: thin; scrollbar-color: rgba(255, 133, 89, 0.4) transparent;
+        }
+        #reportComposeModal.rep-closing > div, #reportViewModal.rep-closing > div { animation: repSheetDown .28s ease forwards; }
+        #reportComposeModal.rep-closing, #reportViewModal.rep-closing { animation: modalBackdropIn .28s ease reverse forwards; }
+        .rep-photo-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: .9rem; overflow: hidden; border: 1px solid rgba(255,255,255,.12); }
+        .rep-photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .rep-photo-thumb button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 999px; background: rgba(10,4,6,.8); color: #fff; font-size: 13px; line-height: 22px; }
+        .rep-field { width: 100%; padding: .65rem .9rem; border-radius: .8rem; background: rgb(14 6 9 / .95); border: 1px solid rgba(255,255,255,.15); color: #fff; font-size: .8rem; }
+        .rep-field:focus { outline: none; border-color: rgba(255,133,89,.7); box-shadow: 0 0 0 3px rgba(255,133,89,.15); }
+        @media (prefers-reduced-motion: reduce) {
+            .rep-lock-card, #reportComposeModal.flex > div, #reportViewModal.flex > div { animation: none; }
+        }
         body.modal-open { overflow: hidden; }
 
         /* ---------- Богатый текст ---------- */
@@ -776,6 +809,7 @@
                     <button type="button" onclick="switchTab('map')" data-tab="map" class="nav-pill px-3.5 py-1.5 font-medium text-sunset-200/80"><span class="lbl-short 2xl:hidden">Карта</span><span class="lbl-full hidden 2xl:inline">Галактическая карта</span></button>
                     <button type="button" onclick="switchTab('lore')" data-tab="lore" class="nav-pill px-3.5 py-1.5 font-medium text-sunset-200/80"><span class="lbl-short 2xl:hidden">Лор</span><span class="lbl-full hidden 2xl:inline">Лор сектора</span></button>
                     <button type="button" onclick="switchTab('donate')" data-tab="donate" class="nav-pill px-3.5 py-1.5 font-medium text-sunset-200/80">Донат</button>
+                    <button type="button" onclick="switchTab('reports')" data-tab="reports" class="nav-pill px-3.5 py-1.5 font-medium text-sunset-200/80">Рапортация</button>
                 </nav>
 
                 <div class="flex items-center gap-1 sm:gap-2 shrink-0">
@@ -811,6 +845,7 @@
                         <button type="button" onclick="switchTab('map')" data-tab="map" class="nav-pill px-3.5 py-3 font-medium text-sunset-200/85 flex items-center gap-2.5"><i data-lucide="map" class="w-4 h-4 opacity-80"></i><span>Галактическая карта</span></button>
                         <button type="button" onclick="switchTab('lore')" data-tab="lore" class="nav-pill px-3.5 py-3 font-medium text-sunset-200/85 flex items-center gap-2.5"><i data-lucide="book-open" class="w-4 h-4 opacity-80"></i><span>Лор сектора</span></button>
                         <button type="button" onclick="switchTab('donate')" data-tab="donate" class="nav-pill px-3.5 py-3 font-medium text-sunset-200/85 flex items-center gap-2.5"><i data-lucide="gem" class="w-4 h-4 opacity-80"></i><span>Донат</span></button>
+                        <button type="button" onclick="switchTab('reports')" data-tab="reports" class="nav-pill px-3.5 py-3 font-medium text-sunset-200/85 flex items-center gap-2.5"><i data-lucide="clipboard-list" class="w-4 h-4 opacity-80"></i><span>Рапортация</span></button>
                         <button type="button" onclick="closeMobileNav(); openProfileModal();" class="sm:hidden col-span-2 px-3.5 py-3 rounded-2xl bg-white/5 border border-white/10 font-medium text-sunset-200 flex items-center justify-center gap-2.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg><span>Сменить аккаунт Steam</span></button>
                     </nav>
                 </div>
@@ -1977,6 +2012,51 @@
         </section>
 
         <!-- 8. ПРОФИЛЬ -->
+        <section id="tab-reports" class="view-section space-y-6">
+            <div id="repShell" class="rep-shell rep-locked">
+                <div id="repContent" class="rep-content space-y-6" aria-hidden="true">
+                    <div class="soft-glass rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-5 border border-rosewood-400/25">
+                        <div class="space-y-1.5 min-w-0">
+                            <span class="text-[11px] font-mono uppercase tracking-wider text-sunset-400">Рапортация · личный состав</span>
+                            <h2 class="font-display font-bold text-2xl sm:text-3xl text-white">Рапорта подразделения</h2>
+                            <p class="text-xs text-sunset-200/70">Подразделение: <strong id="repUnitTitle" class="text-sunset-200">—</strong> · Персонаж: <strong id="repCharName" class="text-sunset-200">—</strong></p>
+                        </div>
+                        <button type="button" onclick="openReportCompose()" class="shrink-0 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 hover:opacity-90 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg md:ml-auto">
+                            <i data-lucide="file-pen-line" class="w-4 h-4"></i><span>Написать рапорт</span>
+                        </button>
+                    </div>
+
+                    <div id="repCharSwitch" class="hidden soft-glass rounded-2xl p-3 flex flex-wrap items-center gap-2">
+                        <span class="text-[11px] font-mono text-sunset-300 px-1">Персонаж:</span>
+                        <div id="repCharPills" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="repFilterCategory" onchange="renderUnitReportsList()" class="rep-field !w-auto">
+                            <option value="">Все категории</option>
+                        </select>
+                        <span id="repCounter" class="text-[11px] font-mono text-sunset-200/60"></span>
+                    </div>
+
+                    <div id="repList" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                </div>
+
+                <div class="rep-lock">
+                    <div class="rep-lock-card soft-glass rounded-3xl p-6 sm:p-8 max-w-md w-full text-center space-y-4 border border-sunset-400/30 shadow-2xl">
+                        <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-rosewood-500/40 to-sunset-500/30 border border-sunset-400/40 flex items-center justify-center">
+                            <i data-lucide="lock-keyhole" class="w-6 h-6 text-sunset-200"></i>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white">Войдите в профиль</h3>
+                        <p class="text-xs text-sunset-200/75 leading-relaxed">Рапорта подразделения доступны только бойцам. Привяжите аккаунт Steam — и вы увидите рапорта своего подразделения и сможете подать свой.</p>
+                        <button type="button" onclick="startSteamOpenIdAuth()" class="steam-login-btn w-full py-3.5 px-5 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-2.5">
+                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.5 1.009 2.455-.397.957-1.497 1.41-2.454 1.012H7.54zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.253 0-2.265-1.014-2.265-2.265z"/></svg>
+                            <span>Привязать Steam</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="tab-profile" class="view-section space-y-6">
             <div class="soft-glass rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-sunset-400/25">
                 <div class="flex items-center gap-4">
@@ -2673,6 +2753,74 @@
     </div>
 
     <!-- МОДАЛЬНОЕ ОКНО РУЧНОЙ ПОДПИСИ ПРИ ПУБЛИКАЦИИ ДОКУМЕНТА ИЛИ ПРИКАЗА -->
+    <!-- Рапортация: написание рапорта -->
+    <div id="reportComposeModal" onclick="if(event.target === this) closeReportCompose()" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-dusk-950/85 backdrop-blur-md p-3 sm:p-4">
+        <div class="soft-glass w-full max-w-2xl rounded-3xl p-5 sm:p-7 border border-rosewood-400/35 shadow-2xl space-y-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <span class="text-[11px] font-mono uppercase tracking-wider text-sunset-400">Новый рапорт</span>
+                    <h3 class="font-display font-bold text-xl text-white">Написать рапорт</h3>
+                    <p id="repComposeFrom" class="text-[11px] text-sunset-200/65 mt-0.5"></p>
+                </div>
+                <button type="button" onclick="closeReportCompose()" aria-label="Закрыть" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-sunset-200"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="repComposeForm" onsubmit="submitUnitReport(event)" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="block space-y-1">
+                        <span class="block text-[11px] font-mono text-sunset-300">Категория рапорта</span>
+                        <select id="repCategory" required class="rep-field"></select>
+                    </label>
+                    <label class="block space-y-1">
+                        <span class="block text-[11px] font-mono text-sunset-300">Адресат рапорта</span>
+                        <select id="repAddressee" required class="rep-field"></select>
+                    </label>
+                </div>
+                <label class="block space-y-1">
+                    <span class="block text-[11px] font-mono text-sunset-300">Тема рапорта</span>
+                    <input id="repSubject" type="text" required maxlength="200" autocomplete="off" placeholder="Кратко: о чём рапорт" class="rep-field">
+                </label>
+                <label class="block space-y-1">
+                    <span class="block text-[11px] font-mono text-sunset-300">Изложение рапорта</span>
+                    <textarea id="repBody" required rows="7" maxlength="3500" placeholder="Подробно изложите суть: время, место, участники, результат..." class="rep-field resize-y min-h-[140px]"></textarea>
+                </label>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="block text-[11px] font-mono text-sunset-300">Фотофиксация <span class="text-sunset-200/50">(до 6 скриншотов)</span></span>
+                        <label class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-[11px] text-sunset-200 cursor-pointer flex items-center gap-1.5">
+                            <i data-lucide="image-plus" class="w-3.5 h-3.5"></i><span>Прикрепить</span>
+                            <input id="repPhotosInput" type="file" accept="image/*" multiple class="hidden" onchange="addReportPhotos(this.files); this.value='';">
+                        </label>
+                    </div>
+                    <div id="repPhotosPreview" class="grid grid-cols-3 sm:grid-cols-6 gap-2"></div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="block text-[11px] font-mono text-sunset-300">Подпись</span>
+                        <button type="button" onclick="clearReportSignature()" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-mono text-sunset-300">Очистить</button>
+                    </div>
+                    <div class="rounded-2xl border border-dashed border-sunset-400/40 bg-dusk-950/80 overflow-hidden">
+                        <canvas id="repSignatureCanvas" width="600" height="150" class="w-full h-[120px] cursor-crosshair touch-none block"></canvas>
+                    </div>
+                    <input id="repSignatureCaption" type="text" required maxlength="80" autocomplete="off" placeholder="Расшифровка подписи, например: SGT | 1234 | Lork" class="rep-field">
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <span id="repComposeStatus" class="text-[11px] font-mono text-sunset-300"></span>
+                    <div class="flex gap-2 justify-end">
+                        <button type="button" onclick="closeReportCompose()" class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-sunset-200">Отмена</button>
+                        <button id="repSubmitBtn" type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rosewood-400 to-sunset-500 hover:opacity-90 text-white font-semibold text-xs flex items-center gap-2 disabled:opacity-50">
+                            <i data-lucide="send" class="w-4 h-4"></i><span>Отправить рапорт</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Рапортация: просмотр рапорта (только чтение) -->
+    <div id="reportViewModal" onclick="if(event.target === this) closeReportView()" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-dusk-950/85 backdrop-blur-md p-3 sm:p-4">
+        <div id="reportViewCard" class="soft-glass w-full max-w-2xl rounded-3xl p-5 sm:p-7 border border-rosewood-400/35 shadow-2xl space-y-4"></div>
+    </div>
+
     <div id="signatureModalOverlay" onclick="if(event.target === this) closeSignatureModal()" class="fixed inset-0 z-50 hidden items-center justify-center bg-dusk-950/85 backdrop-blur-md p-4">
         <div class="soft-glass rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 border border-sunset-400/45 shadow-2xl">
             <div class="flex items-center justify-between border-b border-white/10 pb-3">
@@ -3574,6 +3722,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
             if (typeof closeMobileNav === 'function') closeMobileNav();
             if (tabId === 'map') renderGalacticMap();
+            if (tabId === 'reports') renderUnitReportsTab();
         }
 
         function toggleLoreAccordion(btn) { btn.closest('.lore-accordion-item').classList.toggle('open'); }
@@ -4344,6 +4493,7 @@
             }
             syncAdminRoleUI();
             if (window.eowFitHeader) window.eowFitHeader();
+            try { if (typeof renderUnitReportsTab === 'function') renderUnitReportsTab(); } catch (e) { /* ещё не инициализировано */ }
         }
 
         function syncAdminRoleUI() {
@@ -6312,7 +6462,7 @@
                         <div class="p-3.5 rounded-2xl bg-rosewood-950/60 border border-rosewood-400/45 flex items-center justify-between gap-3">
                             <div class="space-y-1">
                                 <div class="flex items-center gap-2">
-                                    <span class="px-2.5 py-0.5 rounded bg-rosewood-500/30 text-rosewood-200 font-mono text-[10px]">🔒 ${ev.time} МСК</span>
+                                    <span class="px-2.5 py-0.5 rounded bg-rosewood-500/30 text-rosewood-300 font-mono text-[10px]">🔒 ${ev.time} МСК</span>
                                     <span class="text-xs font-bold text-white">Занято (Оперативный резерв)</span>
                                 </div>
                                 <div class="text-[11px] font-mono text-rosewood-300/90">
@@ -7000,6 +7150,8 @@
 
             // Esc закрывает верхнее открытое окно
             const modalClosers = [
+                ['reportViewModal', () => closeReportView()],
+                ['reportComposeModal', () => closeReportCompose()],
                 ['richMediaEmbedModal', () => closeRichMediaModal()],
                 ['signatureModalOverlay', () => closeSignatureModal()],
                 ['soldierEditorModalOverlay', () => closeSoldierEditorModal()],
@@ -7341,6 +7493,7 @@
                 return;
             }
             const content = (data && data.content) || {};
+            try { if (content.unitReports) applyUnitReportsFromServer(content.unitReports); } catch (e) { console.warn('unitReports', e); }
             contentSync.missing = new Set();
             Object.keys(EOW_CONTENT).forEach(k => {
                 if (content[k]) applyContentFromServer(k, content[k].value, content[k].version);
@@ -8194,11 +8347,487 @@
             } catch (err) { showToast(discordErrText(err)); }
             renderDiscordPosts();
         }
+        // ===================== РАПОРТАЦИЯ (пользовательский режим) =====================
+        // Рапорт уходит в Discord (вебхук, красная плашка, ветка по категории) и сохраняется
+        // в общем контенте сайта (ключ unitReports), чтобы его видели бойцы того же подразделения.
+        const UNIT_REPORT_WEBHOOK = 'https://discord.com/api/webhooks/1567409747731157154/cMPsAEq3zUGb9sj0BdMIduKkHa2jthiuinrigG7gpKXaElg72IfBSff7MVluTDQfUDde';
+        const UNIT_REPORT_COLOR = 0xE53935; // красная плашка
+        const UNIT_REPORT_CATEGORIES = [
+            { key: 'post',      title: 'Пост/патруль',         thread: '1567979360097673390' },
+            { key: 'recon',     title: 'Разведка',             thread: '1567979105905934438' },
+            { key: 'lecture',   title: 'Лекция',               thread: '1567978637909819522' },
+            { key: 'sortie',    title: 'Боевой вылет',         thread: '1567978286431211624' },
+            { key: 'training',  title: 'Тренировка',           thread: '1567977727695519835' },
+            { key: 'rank',      title: 'Повышение/понижение',  thread: '1567976726154190908' },
+            { key: 'transfer',  title: 'Перевод',              thread: '1567979876076621915' },
+            { key: 'other',     title: 'Другое',               thread: '' },
+        ];
+        const UNIT_REPORT_ADDRESSEES = [
+            { key: 'unit_cmd', title: 'Командиру подразделения' },
+            { key: 'sector_hq', title: 'Штаб сектора' },
+        ];
+        const UNIT_REPORT_MAX_PHOTOS = 6;
+        const UNIT_REPORT_LOCAL_KEY = 'eow_unit_reports_local_v1';
+        const UNIT_REPORT_CHAR_KEY = 'eow_rep_char_idx';
+        const UNIT_REPORT_STORE_LIMIT = 400;
+
+        let unitReportsStore = [];          // общие рапорта с сервера
+        let unitReportsVersion = 0;
+        let unitReportsServerOk = true;     // сервер принимает ключ unitReports
+        let unitReportsPhotos = [];         // { blob, url, name }
+        let unitReportsSending = false;
+        const unitReportCat = k => UNIT_REPORT_CATEGORIES.find(c => c.key === k) || UNIT_REPORT_CATEGORIES[UNIT_REPORT_CATEGORIES.length - 1];
+        const unitReportAddr = k => UNIT_REPORT_ADDRESSEES.find(a => a.key === k) || UNIT_REPORT_ADDRESSEES[0];
+
+        function unitReportsLocal() {
+            try { const v = JSON.parse(lsGet(UNIT_REPORT_LOCAL_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+        }
+        function saveUnitReportsLocal(list) {
+            try { localStorage.setItem(UNIT_REPORT_LOCAL_KEY, JSON.stringify(list.slice(0, 100))); } catch (e) { /* ignore */ }
+        }
+        const sanitizeUnitReport = r => (r && typeof r === 'object' && typeof r.id === 'string') ? r : null;
+        function allUnitReports() {
+            const map = new Map();
+            unitReportsStore.map(sanitizeUnitReport).filter(Boolean).forEach(r => map.set(r.id, r));
+            unitReportsLocal().map(sanitizeUnitReport).filter(Boolean).forEach(r => { if (!map.has(r.id)) map.set(r.id, r); });
+            return [...map.values()].sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')));
+        }
+
+        // ---- персонажи игрока и их подразделения ----
+        function unitKeyFromDivision(div) {
+            const d = String(div || '').trim();
+            const key = Object.keys(corpsDatabase).find(k => corpsDatabase[k].title === d);
+            return key || ('div:' + d.toLowerCase());
+        }
+        function getReportCharacters() {
+            const u = EOW_AUTH.user;
+            if (!u) return [];
+            const list = [];
+            // 1) бойцы из составов корпусов, привязанные к SteamID игрока
+            Object.keys(factionRostersDatabase || {}).forEach(corpsKey => {
+                const roster = factionRostersDatabase[corpsKey];
+                ((roster && roster.soldiers) || []).forEach(s => {
+                    const sid = String(s.steamId64 || s.steamId || '');
+                    if (sid && (sid === u.steamId64 || sid === u.steamId2)) {
+                        list.push({ name: decodeHtmlText(s.callsign), rank: s.rank || '', unitKey: corpsKey, unitTitle: corpsDatabase[corpsKey]?.title || corpsKey });
+                    }
+                });
+            });
+            if (list.length) return list;
+            // 2) персонажи профиля
+            return userProfileCharacters.map(ch => ({
+                name: ch.name, rank: ch.rank || '', unitKey: unitKeyFromDivision(ch.division), unitTitle: ch.division || 'Без подразделения'
+            }));
+        }
+        function getActiveReportCharacter() {
+            const chars = getReportCharacters();
+            if (!chars.length) return null;
+            let idx = parseInt(lsGet(UNIT_REPORT_CHAR_KEY) || '0', 10);
+            if (!(idx >= 0 && idx < chars.length)) idx = 0;
+            return Object.assign({ idx }, chars[idx]);
+        }
+        function selectReportCharacter(idx) {
+            lsSet(UNIT_REPORT_CHAR_KEY, String(idx));
+            renderUnitReportsTab();
+            const list = document.getElementById('repList');
+            if (list) { list.classList.remove('animate-data-swap'); void list.offsetWidth; list.classList.add('animate-data-swap'); }
+        }
+
+        // ---- отрисовка вкладки ----
+        function renderUnitReportsTab() {
+            const shell = document.getElementById('repShell');
+            if (!shell) return;
+            const linked = !!EOW_AUTH.user;
+            shell.classList.toggle('rep-locked', !linked);
+            const content = document.getElementById('repContent');
+            if (content) { content.setAttribute('aria-hidden', linked ? 'false' : 'true'); content.inert = !linked; }
+
+            const filter = document.getElementById('repFilterCategory');
+            if (filter && filter.options.length <= 1) {
+                filter.insertAdjacentHTML('beforeend', UNIT_REPORT_CATEGORIES.map(c => `<option value="${c.key}">${escapeHtml(c.title)}</option>`).join(''));
+            }
+
+            const chars = linked ? getReportCharacters() : userProfileCharacters.map(ch => ({ name: ch.name, unitKey: unitKeyFromDivision(ch.division), unitTitle: ch.division }));
+            const active = linked ? getActiveReportCharacter() : (chars[0] ? Object.assign({ idx: 0 }, chars[0]) : null);
+            const setText = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+            setText('repUnitTitle', active ? active.unitTitle : '—');
+            setText('repCharName', active ? active.name : '—');
+
+            const sw = document.getElementById('repCharSwitch');
+            const pills = document.getElementById('repCharPills');
+            if (sw && pills) {
+                sw.classList.toggle('hidden', chars.length < 2);
+                pills.innerHTML = chars.map((c, i) => `
+                    <button type="button" onclick="selectReportCharacter(${i})" class="rep-char-pill ${active && active.idx === i ? 'active' : ''} px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-sunset-200 text-left">
+                        <span class="block font-semibold">${escapeHtml(c.name)}</span>
+                        <span class="block text-[10px] font-mono opacity-70">${escapeHtml(c.unitTitle)}</span>
+                    </button>`).join('');
+            }
+            renderUnitReportsList();
+        }
+
+        function formatReportTime(iso) {
+            const d = new Date(iso);
+            if (isNaN(d)) return '';
+            return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderUnitReportsList() {
+            const box = document.getElementById('repList');
+            if (!box) return;
+            const linked = !!EOW_AUTH.user;
+            const active = linked ? getActiveReportCharacter() : null;
+            const cat = (document.getElementById('repFilterCategory') || {}).value || '';
+            let list = [];
+            if (linked && active) {
+                list = allUnitReports().filter(r => r.unit === active.unitKey && (!cat || r.category === cat));
+            } else {
+                // демонстрационные карточки под размытием для гостя
+                list = [1, 2, 3, 4].map(i => ({ id: 'demo' + i, category: UNIT_REPORT_CATEGORIES[i].key, addressee: 'unit_cmd', subject: 'Рапорт личного состава', body: 'Содержимое рапорта доступно только бойцам подразделения после входа через Steam.', charName: 'CT | 0000 | Боец', time: new Date().toISOString() }));
+            }
+            const counter = document.getElementById('repCounter');
+            if (counter) counter.textContent = linked ? `Рапортов: ${list.length}` : '';
+            if (!list.length) {
+                box.innerHTML = `<div class="lg:col-span-2 p-6 rounded-3xl bg-dusk-950/60 border border-dashed border-white/15 text-center text-xs text-sunset-200/70 leading-relaxed">
+                    В подразделении пока нет рапортов${cat ? ' этой категории' : ''}. Нажмите «Написать рапорт», чтобы подать первый.</div>`;
+                return;
+            }
+            const me = linked ? EOW_AUTH.user.steamId64 : '';
+            box.innerHTML = list.map(r => {
+                const c = unitReportCat(r.category), a = unitReportAddr(r.addressee);
+                const mine = r.authorSteamId && r.authorSteamId === me;
+                const body = String(r.body || '');
+                return `
+                <button type="button" onclick="openReportView('${escapeHtml(r.id)}')" class="rep-card text-left w-full p-4 sm:p-5 rounded-2xl bg-dusk-950/80 border border-white/10 space-y-2.5">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-full bg-rosewood-500/25 border border-rosewood-400/40 text-rosewood-300 font-mono text-[10px]">${escapeHtml(c.title)}</span>
+                        <span class="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/15 text-sunset-200/80 font-mono text-[10px]">→ ${escapeHtml(a.title)}</span>
+                        ${mine ? '<span class="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/35 text-emerald-300 font-mono text-[10px]">Ваш рапорт</span>' : ''}
+                        ${r.photos ? `<span class="ml-auto text-[10px] font-mono text-sunset-200/60">📷 ${r.photos | 0}</span>` : ''}
+                    </div>
+                    <div class="font-display font-bold text-sm text-white">${escapeHtml(r.subject)}</div>
+                    <div class="text-xs text-sunset-200/75 leading-relaxed line-clamp-3 whitespace-pre-line">${escapeHtml(body.length > 260 ? body.slice(0, 260) + '…' : body)}</div>
+                    <div class="text-[10px] font-mono text-sunset-200/50 pt-2 border-t border-white/5 flex flex-wrap gap-2 justify-between">
+                        <span>Подал: ${escapeHtml(r.charName || '')}</span><span>${formatReportTime(r.time)}</span>
+                    </div>
+                </button>`;
+            }).join('');
+        }
+
+        // ---- просмотр рапорта (только чтение) ----
+        function showRepModal(id) {
+            const m = document.getElementById(id);
+            if (!m) return;
+            m.classList.remove('rep-closing', 'hidden'); m.classList.add('flex');
+            refreshIcons();
+        }
+        function hideRepModal(id) {
+            const m = document.getElementById(id);
+            if (!m || m.classList.contains('hidden')) return;
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reduce) { m.classList.add('hidden'); m.classList.remove('flex'); return; }
+            m.classList.add('rep-closing');
+            setTimeout(() => { m.classList.remove('rep-closing', 'flex'); m.classList.add('hidden'); }, 270);
+        }
+        function closeReportView() { hideRepModal('reportViewModal'); }
+
+        async function openReportView(id) {
+            if (!EOW_AUTH.user) return;
+            const r = allUnitReports().find(x => x.id === id);
+            const card = document.getElementById('reportViewCard');
+            if (!r || !card) return;
+            const c = unitReportCat(r.category), a = unitReportAddr(r.addressee);
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap gap-2 mb-1.5">
+                            <span class="px-2.5 py-0.5 rounded-full bg-rosewood-500/25 border border-rosewood-400/40 text-rosewood-300 font-mono text-[10px]">${escapeHtml(c.title)}</span>
+                            <span class="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/15 text-sunset-200/80 font-mono text-[10px]">Адресат: ${escapeHtml(a.title)}</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white break-words">${escapeHtml(r.subject)}</h3>
+                        <p class="text-[11px] font-mono text-sunset-200/60 mt-1">${escapeHtml(r.unitTitle || '')} · ${formatReportTime(r.time)}</p>
+                    </div>
+                    <button type="button" onclick="closeReportView()" aria-label="Закрыть" class="shrink-0 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-sunset-200"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div class="p-4 rounded-2xl bg-dusk-950/80 border border-white/10 text-sm text-white/90 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(r.body)}</div>
+                <div id="repViewPhotos" class="${r.photos ? '' : 'hidden'} space-y-2">
+                    <div class="text-[11px] font-mono text-sunset-300">Фотофиксация</div>
+                    <div id="repViewPhotosGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"><div class="col-span-full text-[11px] text-sunset-200/60">Загрузка скриншотов из Discord…</div></div>
+                </div>
+                <div class="flex flex-wrap items-end justify-between gap-3 pt-3 border-t border-white/10">
+                    <div class="text-[11px] text-sunset-200/70 space-y-0.5">
+                        <div>Подал: <strong class="text-white">${escapeHtml(r.charName || '')}</strong></div>
+                        <div class="font-mono text-sunset-200/50">Steam: ${escapeHtml(r.steamName || '')}</div>
+                    </div>
+                    <div class="text-right">
+                        <div id="repViewSignature" class="h-12 flex justify-end"></div>
+                        <div class="text-[11px] font-mono text-sunset-200/80 border-t border-white/20 pt-0.5 mt-0.5">${escapeHtml(r.signature || '')}</div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-sunset-200/45 text-center">Рапорт доступен только для чтения</p>`;
+            showRepModal('reportViewModal');
+
+            // свежие ссылки на скриншоты и подпись берём из сообщения в Discord
+            if (!r.discord || !r.discord.messageId) { const g = document.getElementById('repViewPhotosGrid'); if (g) g.innerHTML = ''; return; }
+            try {
+                const q = r.discord.threadId ? '?thread_id=' + encodeURIComponent(r.discord.threadId) : '';
+                const res = await fetch(UNIT_REPORT_WEBHOOK + '/messages/' + encodeURIComponent(r.discord.messageId) + q);
+                if (!res.ok) throw new Error('http_' + res.status);
+                const msg = await res.json();
+                const atts = (msg.attachments || []).filter(x => /^https:\/\//.test(x.url || ''));
+                const sig = atts.find(x => x.filename === 'signature.png');
+                const photos = atts.filter(x => x !== sig && /^image\//.test(x.content_type || 'image/'));
+                const grid = document.getElementById('repViewPhotosGrid');
+                if (grid) grid.innerHTML = photos.length ? photos.map(p => `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="rep-photo-thumb block"><img src="${escapeHtml(p.url)}" alt="Скриншот" loading="lazy"></a>`).join('') : '<div class="col-span-full text-[11px] text-sunset-200/60">Скриншоты не найдены</div>';
+                const sigBox = document.getElementById('repViewSignature');
+                if (sigBox && sig) sigBox.innerHTML = `<img src="${escapeHtml(sig.url)}" alt="Подпись" class="h-12 w-auto">`;
+            } catch (e) {
+                const grid = document.getElementById('repViewPhotosGrid');
+                if (grid) grid.innerHTML = '<div class="col-span-full text-[11px] text-amber-300/80">Не удалось загрузить скриншоты из Discord</div>';
+            }
+        }
+
+        // ---- форма рапорта ----
+        let repSigCanvas = null, repSigCtx = null, repSigDrawn = false;
+        function initReportSignaturePad() {
+            if (repSigCanvas) return;
+            repSigCanvas = document.getElementById('repSignatureCanvas');
+            if (!repSigCanvas) return;
+            repSigCtx = repSigCanvas.getContext('2d');
+            let drawing = false;
+            const pos = (e) => {
+                const r = repSigCanvas.getBoundingClientRect();
+                const p = e.touches ? e.touches[0] : e;
+                return { x: (p.clientX - r.left) * (repSigCanvas.width / r.width), y: (p.clientY - r.top) * (repSigCanvas.height / r.height) };
+            };
+            const start = (e) => { e.preventDefault(); drawing = true; repSigDrawn = true; const p = pos(e); repSigCtx.beginPath(); repSigCtx.moveTo(p.x, p.y); };
+            const move = (e) => {
+                if (!drawing) return; e.preventDefault();
+                const p = pos(e);
+                repSigCtx.lineWidth = 3; repSigCtx.lineCap = 'round'; repSigCtx.lineJoin = 'round'; repSigCtx.strokeStyle = '#ffd7c2';
+                repSigCtx.lineTo(p.x, p.y); repSigCtx.stroke();
+            };
+            const end = () => { drawing = false; };
+            repSigCanvas.addEventListener('mousedown', start); repSigCanvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+            repSigCanvas.addEventListener('touchstart', start, { passive: false }); repSigCanvas.addEventListener('touchmove', move, { passive: false }); repSigCanvas.addEventListener('touchend', end);
+        }
+        function clearReportSignature() {
+            initReportSignaturePad();
+            if (repSigCtx) repSigCtx.clearRect(0, 0, repSigCanvas.width, repSigCanvas.height);
+            repSigDrawn = false;
+        }
+
+        function openReportCompose() {
+            if (!EOW_AUTH.user) { openProfileModal(); return; }
+            const ch = getActiveReportCharacter();
+            if (!ch) { showToast('У вас нет персонажа в подразделении'); return; }
+            const catSel = document.getElementById('repCategory');
+            if (catSel && !catSel.options.length) catSel.innerHTML = '<option value="" disabled selected>Выберите категорию</option>' + UNIT_REPORT_CATEGORIES.map(c => `<option value="${c.key}">${escapeHtml(c.title)}</option>`).join('');
+            const addrSel = document.getElementById('repAddressee');
+            if (addrSel && !addrSel.options.length) addrSel.innerHTML = UNIT_REPORT_ADDRESSEES.map(a => `<option value="${a.key}">${escapeHtml(a.title)}</option>`).join('');
+            const from = document.getElementById('repComposeFrom');
+            if (from) from.textContent = `От: ${ch.name} · ${ch.unitTitle}`;
+            const cap = document.getElementById('repSignatureCaption');
+            if (cap && !cap.value) cap.value = ch.name;
+            const st = document.getElementById('repComposeStatus'); if (st) st.textContent = '';
+            showRepModal('reportComposeModal');
+            initReportSignaturePad();
+        }
+        function closeReportCompose() { if (!unitReportsSending) hideRepModal('reportComposeModal'); }
+
+        function renderReportPhotosPreview() {
+            const box = document.getElementById('repPhotosPreview');
+            if (!box) return;
+            box.innerHTML = unitReportsPhotos.map((p, i) => `<div class="rep-photo-thumb"><img src="${p.url}" alt=""><button type="button" onclick="removeReportPhoto(${i})" aria-label="Убрать">×</button></div>`).join('');
+        }
+        function removeReportPhoto(i) {
+            const p = unitReportsPhotos[i];
+            if (p) URL.revokeObjectURL(p.url);
+            unitReportsPhotos.splice(i, 1);
+            renderReportPhotosPreview();
+        }
+        // ужимаем скриншот, чтобы точно пролез в лимиты Discord
+        function compressReportImage(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const src = URL.createObjectURL(file);
+                img.onload = () => {
+                    const max = 1920, k = Math.min(1, max / Math.max(img.width, img.height));
+                    const cv = document.createElement('canvas');
+                    cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+                    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                    URL.revokeObjectURL(src);
+                    cv.toBlob(b => resolve(b || file), 'image/jpeg', 0.85);
+                };
+                img.onerror = () => { URL.revokeObjectURL(src); resolve(null); };
+                img.src = src;
+            });
+        }
+        async function addReportPhotos(files) {
+            const list = [...(files || [])].filter(f => /^image\//.test(f.type));
+            for (const f of list) {
+                if (unitReportsPhotos.length >= UNIT_REPORT_MAX_PHOTOS) { showToast(`Можно прикрепить не больше ${UNIT_REPORT_MAX_PHOTOS} скриншотов`); break; }
+                const blob = f.type === 'image/gif' ? f : await compressReportImage(f);
+                if (!blob) { showToast('Не удалось прочитать файл ' + f.name); continue; }
+                if (blob.size > 9.5 * 1024 * 1024) { showToast('Файл слишком большой: ' + f.name); continue; }
+                unitReportsPhotos.push({ blob, url: URL.createObjectURL(blob), ext: f.type === 'image/gif' ? 'gif' : 'jpg' });
+            }
+            renderReportPhotosPreview();
+        }
+
+        function reportSignatureBlob() {
+            return new Promise(resolve => {
+                if (!repSigCanvas || !repSigDrawn) return resolve(null);
+                repSigCanvas.toBlob(b => resolve(b), 'image/png');
+            });
+        }
+
+        async function postUnitReportToDiscord(rep, sigBlob) {
+            const c = unitReportCat(rep.category), a = unitReportAddr(rep.addressee);
+            const siteUrl = 'https://eclipseofwar.com/#report-' + rep.id;
+            const main = {
+                color: UNIT_REPORT_COLOR,
+                url: siteUrl,
+                title: ('Рапорт · ' + rep.subject).slice(0, 256),
+                description: rep.body.slice(0, 4000),
+                fields: [
+                    { name: 'Категория', value: c.title, inline: true },
+                    { name: 'Адресат', value: a.title, inline: true },
+                    { name: 'Подразделение', value: (rep.unitTitle || '—').slice(0, 1024), inline: true },
+                    { name: 'Подал', value: `${rep.charName}\nSteam: ${rep.steamName} (${rep.authorSteamId})`.slice(0, 1024), inline: false },
+                    { name: 'Подпись', value: (rep.signature || '—').slice(0, 1024), inline: false },
+                ],
+                footer: { text: 'Eclipse of War · Рапортация' },
+                timestamp: rep.time,
+            };
+            const embeds = [main];
+            const fd = new FormData();
+            const attachments = [];
+            unitReportsPhotos.forEach((p, i) => {
+                const name = `photo_${i + 1}.${p.ext}`;
+                fd.append(`files[${attachments.length}]`, p.blob, name);
+                attachments.push({ id: attachments.length, filename: name });
+                if (i === 0) main.image = { url: 'attachment://' + name };
+                else embeds.push({ url: siteUrl, color: UNIT_REPORT_COLOR, image: { url: 'attachment://' + name } });
+            });
+            if (sigBlob) {
+                fd.append(`files[${attachments.length}]`, sigBlob, 'signature.png');
+                attachments.push({ id: attachments.length, filename: 'signature.png' });
+                main.thumbnail = { url: 'attachment://signature.png' };
+            }
+            const payload = { username: 'EOW · Рапортация', embeds, attachments, allowed_mentions: { parse: [] } };
+
+            const send = async (threadId, threadName) => {
+                const body = new FormData();
+                for (const [k, v] of fd.entries()) body.append(k, v, v.name);
+                body.append('payload_json', JSON.stringify(threadName ? Object.assign({}, payload, { thread_name: threadName.slice(0, 100) }) : payload));
+                const q = '?wait=true' + (threadId ? '&thread_id=' + threadId : '');
+                const res = await fetch(UNIT_REPORT_WEBHOOK + q, { method: 'POST', body });
+                let data = null; try { data = await res.json(); } catch (e) { /* ignore */ }
+                return { res, data };
+            };
+            let { res, data } = await send(c.thread, null);
+            // канал вебхука — форум: для «Другое» создаём отдельную ветку
+            if (!res.ok && !c.thread && data && data.code === 220001) ({ res, data } = await send('', `${c.title} · ${rep.subject}`));
+            if (!res.ok) { const e = new Error('discord_' + res.status); e.status = res.status; e.data = data; throw e; }
+            return { messageId: data && data.id, threadId: c.thread || (data && data.channel_id) || '' };
+        }
+
+        async function submitUnitReport(e) {
+            e.preventDefault();
+            if (unitReportsSending) return;
+            const u = EOW_AUTH.user;
+            const ch = getActiveReportCharacter();
+            if (!u || !ch) { showToast('Войдите в профиль, чтобы подать рапорт'); return; }
+            const val = id => (document.getElementById(id)?.value || '').trim();
+            const category = val('repCategory'), addressee = val('repAddressee');
+            const subject = val('repSubject'), body = val('repBody'), signature = val('repSignatureCaption');
+            if (!UNIT_REPORT_CATEGORIES.some(c => c.key === category)) { showToast('Выберите категорию рапорта'); return; }
+            if (!UNIT_REPORT_ADDRESSEES.some(a => a.key === addressee)) { showToast('Выберите адресата рапорта'); return; }
+            if (!subject || !body) { showToast('Заполните тему и изложение рапорта'); return; }
+            if (!repSigDrawn) { showToast('Поставьте подпись в поле «Подпись»'); return; }
+            if (!signature) { showToast('Укажите расшифровку подписи'); return; }
+
+            const rep = {
+                id: 'rep_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+                unit: ch.unitKey, unitTitle: ch.unitTitle,
+                category, addressee, subject, body, signature,
+                charName: ch.name, authorSteamId: u.steamId64, steamName: cleanNick(u.name),
+                photos: unitReportsPhotos.length, time: new Date().toISOString(),
+            };
+            const st = document.getElementById('repComposeStatus');
+            const btn = document.getElementById('repSubmitBtn');
+            unitReportsSending = true;
+            if (btn) btn.disabled = true;
+            if (st) st.textContent = 'Отправка рапорта в Discord…';
+            try {
+                rep.discord = await postUnitReportToDiscord(rep, await reportSignatureBlob());
+            } catch (err) {
+                console.warn('Рапорт: ошибка Discord', err.status, err.data);
+                if (st) st.textContent = `Ошибка отправки${err.status ? ' (' + err.status + ')' : ''}`;
+                showToast(err.status === 413 ? 'Скриншоты слишком тяжёлые — уберите часть' : 'Не удалось отправить рапорт в Discord. Попробуйте ещё раз');
+                unitReportsSending = false; if (btn) btn.disabled = false;
+                return;
+            }
+            saveUnitReportsLocal([rep, ...unitReportsLocal()]);
+            unitReportsStore = [rep, ...unitReportsStore.filter(x => x && x.id !== rep.id)].slice(0, UNIT_REPORT_STORE_LIMIT);
+            pushUnitReports(rep);
+
+            unitReportsSending = false; if (btn) btn.disabled = false;
+            if (st) st.textContent = '';
+            document.getElementById('repComposeForm')?.reset();
+            unitReportsPhotos.forEach(p => URL.revokeObjectURL(p.url)); unitReportsPhotos = [];
+            renderReportPhotosPreview(); clearReportSignature();
+            hideRepModal('reportComposeModal');
+            renderUnitReportsTab();
+            showToast(`Рапорт «${subject}» отправлен: ${unitReportAddr(addressee).title}`);
+        }
+
+        // ---- синхронизация с сервером сайта (ключ unitReports) ----
+        function applyUnitReportsFromServer(entry) {
+            if (!entry || !Array.isArray(entry.value)) return;
+            unitReportsStore = entry.value.map(sanitizeUnitReport).filter(Boolean);
+            unitReportsVersion = typeof entry.version === 'number' ? entry.version : unitReportsVersion;
+            // локальные рапорта, уже попавшие на сервер, больше не держим
+            const ids = new Set(unitReportsStore.map(r => r.id));
+            const left = unitReportsLocal().filter(r => r && !ids.has(r.id));
+            saveUnitReportsLocal(left);
+            renderUnitReportsTab();
+            if (left.length && EOW_AUTH.user) left.forEach(r => pushUnitReports(r));
+        }
+        async function pushUnitReports(rep, attempt = 0) {
+            if (!EOW_AUTH_API || !EOW_AUTH.user || !unitReportsServerOk) return;
+            const value = [rep, ...unitReportsStore.filter(x => x && x.id !== rep.id)].slice(0, UNIT_REPORT_STORE_LIMIT);
+            let res, data = {};
+            try {
+                res = await fetch(EOW_AUTH_API.replace(/\/+$/, '') + '/api/content/unitReports', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (lsGet(EOW_TOKEN_KEY) || '') },
+                    body: JSON.stringify({ baseVersion: unitReportsVersion, value }),
+                });
+                try { data = await res.json(); } catch (e) { /* ignore */ }
+            } catch (e) { return; } // нет связи — рапорт остаётся в локальной очереди
+            if (res.ok) {
+                applyUnitReportsFromServer({ value: data.value || value, version: data.version });
+                return;
+            }
+            if (res.status === 409 && attempt < 3) {
+                unitReportsStore = Array.isArray(data.value) ? data.value.map(sanitizeUnitReport).filter(Boolean) : unitReportsStore;
+                if (typeof data.version === 'number') unitReportsVersion = data.version;
+                return pushUnitReports(rep, attempt + 1);
+            }
+            if (res.status === 401) { setAuthUser(null, true); return; }
+            // сервер пока не знает ключ unitReports или не пускает игроков — рапорт виден локально и уже ушёл в Discord
+            unitReportsServerOk = false;
+            console.warn('Рапортация: сервер не сохранил рапорт', res.status, data && data.error);
+        }
+
         applyCachedContent();
         renderFactionCards();
         renderPublicDocumentationSection();
         renderPublicNewsFeed();
         renderOwnerNewsManageList();
+        renderUnitReportsTab();
         renderProfileCharacters();
         renderGalacticMap();
         initRustMap();
