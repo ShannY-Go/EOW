@@ -7493,7 +7493,6 @@
                 return;
             }
             const content = (data && data.content) || {};
-            try { if (content.unitReports) applyUnitReportsFromServer(content.unitReports); } catch (e) { console.warn('unitReports', e); }
             contentSync.missing = new Set();
             Object.keys(EOW_CONTENT).forEach(k => {
                 if (content[k]) applyContentFromServer(k, content[k].value, content[k].version);
@@ -8348,50 +8347,47 @@
             renderDiscordPosts();
         }
         // ===================== РАПОРТАЦИЯ (пользовательский режим) =====================
-        // Рапорт уходит в Discord (вебхук, красная плашка, ветка по категории) и сохраняется
-        // в общем контенте сайта (ключ unitReports), чтобы его видели бойцы того же подразделения.
-        const UNIT_REPORT_WEBHOOK = 'https://discord.com/api/webhooks/1567409747731157154/cMPsAEq3zUGb9sj0BdMIduKkHa2jthiuinrigG7gpKXaElg72IfBSff7MVluTDQfUDde';
-        const UNIT_REPORT_COLOR = 0xE53935; // красная плашка
+        // Рапорт отправляется на сервер сайта (воркер): он пересылает его в Discord (красная плашка,
+        // ветка по категории) и сохраняет. Ссылка вебхука на сайт не попадает.
         const UNIT_REPORT_CATEGORIES = [
-            { key: 'post',      title: 'Пост/патруль',         thread: '1567979360097673390' },
-            { key: 'recon',     title: 'Разведка',             thread: '1567979105905934438' },
-            { key: 'lecture',   title: 'Лекция',               thread: '1567978637909819522' },
-            { key: 'sortie',    title: 'Боевой вылет',         thread: '1567978286431211624' },
-            { key: 'training',  title: 'Тренировка',           thread: '1567977727695519835' },
-            { key: 'rank',      title: 'Повышение/понижение',  thread: '1567976726154190908' },
-            { key: 'transfer',  title: 'Перевод',              thread: '1567979876076621915' },
-            { key: 'other',     title: 'Другое',               thread: '' },
+            { key: 'post',      title: 'Пост/патруль' },
+            { key: 'recon',     title: 'Разведка' },
+            { key: 'lecture',   title: 'Лекция' },
+            { key: 'sortie',    title: 'Боевой вылет' },
+            { key: 'training',  title: 'Тренировка' },
+            { key: 'rank',      title: 'Повышение/понижение' },
+            { key: 'transfer',  title: 'Перевод' },
+            { key: 'other',     title: 'Другое' },
         ];
         const UNIT_REPORT_ADDRESSEES = [
             { key: 'unit_cmd', title: 'Командиру подразделения' },
             { key: 'sector_hq', title: 'Штаб сектора' },
         ];
         const UNIT_REPORT_MAX_PHOTOS = 6;
-        const UNIT_REPORT_LOCAL_KEY = 'eow_unit_reports_local_v1';
         const UNIT_REPORT_CHAR_KEY = 'eow_rep_char_idx';
-        const UNIT_REPORT_STORE_LIMIT = 400;
+        const UNIT_REPORT_ERRORS = {
+            unauthorized: 'Войдите через Steam заново',
+            reports_not_configured: 'Рапортация ещё не подключена на сервере — сообщите Овнеру',
+            unit_forbidden: 'Это не ваше подразделение',
+            too_many: 'Слишком часто — подождите пару минут',
+            too_large: 'Скриншоты слишком тяжёлые — уберите часть',
+            too_many_photos: `Не больше ${UNIT_REPORT_MAX_PHOTOS} скриншотов`,
+            bad_photo: 'Формат скриншота не поддерживается (нужен JPG, PNG, WEBP или GIF)',
+            empty_fields: 'Заполните тему и изложение рапорта',
+            no_signature: 'Укажите расшифровку подписи',
+            webhook_gone: 'Вебхук Discord удалён — сообщите Овнеру',
+            rate_limited: 'Discord просит подождать — попробуйте через минуту',
+            discord_rejected: 'Discord не принял рапорт',
+            discord_unavailable: 'Discord сейчас недоступен, попробуйте позже',
+        };
+        const unitReportErr = (code, fallback) => UNIT_REPORT_ERRORS[code] || fallback;
 
-        let unitReportsStore = [];          // общие рапорта с сервера
-        let unitReportsVersion = 0;
-        let unitReportsServerOk = true;     // сервер принимает ключ unitReports
-        let unitReportsPhotos = [];         // { blob, url, name }
+        const unitReportsByUnit = {};       // unit → массив рапортов с сервера
+        const unitReportsState = {};        // unit → 'loading' | код ошибки
+        let unitReportsPhotos = [];         // { blob, url }
         let unitReportsSending = false;
         const unitReportCat = k => UNIT_REPORT_CATEGORIES.find(c => c.key === k) || UNIT_REPORT_CATEGORIES[UNIT_REPORT_CATEGORIES.length - 1];
         const unitReportAddr = k => UNIT_REPORT_ADDRESSEES.find(a => a.key === k) || UNIT_REPORT_ADDRESSEES[0];
-
-        function unitReportsLocal() {
-            try { const v = JSON.parse(lsGet(UNIT_REPORT_LOCAL_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
-        }
-        function saveUnitReportsLocal(list) {
-            try { localStorage.setItem(UNIT_REPORT_LOCAL_KEY, JSON.stringify(list.slice(0, 100))); } catch (e) { /* ignore */ }
-        }
-        const sanitizeUnitReport = r => (r && typeof r === 'object' && typeof r.id === 'string') ? r : null;
-        function allUnitReports() {
-            const map = new Map();
-            unitReportsStore.map(sanitizeUnitReport).filter(Boolean).forEach(r => map.set(r.id, r));
-            unitReportsLocal().map(sanitizeUnitReport).filter(Boolean).forEach(r => { if (!map.has(r.id)) map.set(r.id, r); });
-            return [...map.values()].sort((a, b) => String(b.time || '').localeCompare(String(a.time || '')));
-        }
 
         // ---- персонажи игрока и их подразделения ----
         function unitKeyFromDivision(div) {
@@ -8403,21 +8399,19 @@
             const u = EOW_AUTH.user;
             if (!u) return [];
             const list = [];
-            // 1) бойцы из составов корпусов, привязанные к SteamID игрока
+            // 1) бойцы из составов корпусов, привязанные к SteamID игрока (поле steamId64 или steamId)
             Object.keys(factionRostersDatabase || {}).forEach(corpsKey => {
                 const roster = factionRostersDatabase[corpsKey];
                 ((roster && roster.soldiers) || []).forEach(s => {
                     const sid = String(s.steamId64 || s.steamId || '');
                     if (sid && (sid === u.steamId64 || sid === u.steamId2)) {
-                        list.push({ name: decodeHtmlText(s.callsign), rank: s.rank || '', unitKey: corpsKey, unitTitle: corpsDatabase[corpsKey]?.title || corpsKey });
+                        list.push({ name: decodeHtmlText(s.callsign), unitKey: corpsKey, unitTitle: corpsDatabase[corpsKey]?.title || corpsKey });
                     }
                 });
             });
             if (list.length) return list;
             // 2) персонажи профиля
-            return userProfileCharacters.map(ch => ({
-                name: ch.name, rank: ch.rank || '', unitKey: unitKeyFromDivision(ch.division), unitTitle: ch.division || 'Без подразделения'
-            }));
+            return userProfileCharacters.map(ch => ({ name: ch.name, unitKey: unitKeyFromDivision(ch.division), unitTitle: ch.division || 'Без подразделения' }));
         }
         function getActiveReportCharacter() {
             const chars = getReportCharacters();
@@ -8431,6 +8425,20 @@
             renderUnitReportsTab();
             const list = document.getElementById('repList');
             if (list) { list.classList.remove('animate-data-swap'); void list.offsetWidth; list.classList.add('animate-data-swap'); }
+        }
+
+        async function loadUnitReports(unit) {
+            if (!unit || unitReportsState[unit] === 'loading') return;
+            unitReportsState[unit] = 'loading';
+            renderUnitReportsList();
+            try {
+                const data = await eowApi('/api/reports?unit=' + encodeURIComponent(unit));
+                unitReportsByUnit[unit] = Array.isArray(data.reports) ? data.reports : [];
+                delete unitReportsState[unit];
+            } catch (e) {
+                unitReportsState[unit] = e.message || 'network';
+            }
+            renderUnitReportsList();
         }
 
         // ---- отрисовка вкладки ----
@@ -8463,6 +8471,7 @@
                         <span class="block text-[10px] font-mono opacity-70">${escapeHtml(c.unitTitle)}</span>
                     </button>`).join('');
             }
+            if (linked && active && !unitReportsByUnit[active.unitKey] && !unitReportsState[active.unitKey]) loadUnitReports(active.unitKey);
             renderUnitReportsList();
         }
 
@@ -8478,20 +8487,23 @@
             const linked = !!EOW_AUTH.user;
             const active = linked ? getActiveReportCharacter() : null;
             const cat = (document.getElementById('repFilterCategory') || {}).value || '';
+            const counter = document.getElementById('repCounter');
+            const note = (html) => { box.innerHTML = `<div class="lg:col-span-2 p-6 rounded-3xl bg-dusk-950/60 border border-dashed border-white/15 text-center text-xs text-sunset-200/70 leading-relaxed">${html}</div>`; };
             let list = [];
             if (linked && active) {
-                list = allUnitReports().filter(r => r.unit === active.unitKey && (!cat || r.category === cat));
+                const st = unitReportsState[active.unitKey];
+                if (!unitReportsByUnit[active.unitKey]) {
+                    if (counter) counter.textContent = '';
+                    if (st === 'loading' || !st) return note('Загрузка рапортов подразделения…');
+                    return note(`${escapeHtml(unitReportErr(st, 'Не удалось загрузить рапорта'))}. <button type="button" onclick="delete unitReportsState['${escapeHtml(active.unitKey)}']; loadUnitReports('${escapeHtml(active.unitKey)}')" class="underline text-sunset-300">Повторить</button>`);
+                }
+                list = unitReportsByUnit[active.unitKey].filter(r => !cat || r.category === cat);
             } else {
                 // демонстрационные карточки под размытием для гостя
                 list = [1, 2, 3, 4].map(i => ({ id: 'demo' + i, category: UNIT_REPORT_CATEGORIES[i].key, addressee: 'unit_cmd', subject: 'Рапорт личного состава', body: 'Содержимое рапорта доступно только бойцам подразделения после входа через Steam.', charName: 'CT | 0000 | Боец', time: new Date().toISOString() }));
             }
-            const counter = document.getElementById('repCounter');
             if (counter) counter.textContent = linked ? `Рапортов: ${list.length}` : '';
-            if (!list.length) {
-                box.innerHTML = `<div class="lg:col-span-2 p-6 rounded-3xl bg-dusk-950/60 border border-dashed border-white/15 text-center text-xs text-sunset-200/70 leading-relaxed">
-                    В подразделении пока нет рапортов${cat ? ' этой категории' : ''}. Нажмите «Написать рапорт», чтобы подать первый.</div>`;
-                return;
-            }
+            if (!list.length) return note(`В подразделении пока нет рапортов${cat ? ' этой категории' : ''}. Нажмите «Написать рапорт», чтобы подать первый.`);
             const me = linked ? EOW_AUTH.user.steamId64 : '';
             box.innerHTML = list.map(r => {
                 const c = unitReportCat(r.category), a = unitReportAddr(r.addressee);
@@ -8533,7 +8545,7 @@
 
         async function openReportView(id) {
             if (!EOW_AUTH.user) return;
-            const r = allUnitReports().find(x => x.id === id);
+            const r = Object.values(unitReportsByUnit).flat().find(x => x.id === id);
             const card = document.getElementById('reportViewCard');
             if (!r || !card) return;
             const c = unitReportCat(r.category), a = unitReportAddr(r.addressee);
@@ -8550,9 +8562,9 @@
                     <button type="button" onclick="closeReportView()" aria-label="Закрыть" class="shrink-0 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-sunset-200"><i data-lucide="x" class="w-4 h-4"></i></button>
                 </div>
                 <div class="p-4 rounded-2xl bg-dusk-950/80 border border-white/10 text-sm text-white/90 leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(r.body)}</div>
-                <div id="repViewPhotos" class="${r.photos ? '' : 'hidden'} space-y-2">
+                <div class="${r.photos ? '' : 'hidden'} space-y-2">
                     <div class="text-[11px] font-mono text-sunset-300">Фотофиксация</div>
-                    <div id="repViewPhotosGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"><div class="col-span-full text-[11px] text-sunset-200/60">Загрузка скриншотов из Discord…</div></div>
+                    <div id="repViewPhotosGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"><div class="col-span-full text-[11px] text-sunset-200/60">Загрузка скриншотов…</div></div>
                 </div>
                 <div class="flex flex-wrap items-end justify-between gap-3 pt-3 border-t border-white/10">
                     <div class="text-[11px] text-sunset-200/70 space-y-0.5">
@@ -8567,23 +8579,18 @@
                 <p class="text-[10px] text-sunset-200/45 text-center">Рапорт доступен только для чтения</p>`;
             showRepModal('reportViewModal');
 
-            // свежие ссылки на скриншоты и подпись берём из сообщения в Discord
-            if (!r.discord || !r.discord.messageId) { const g = document.getElementById('repViewPhotosGrid'); if (g) g.innerHTML = ''; return; }
+            // свежие ссылки на скриншоты и подпись сервер берёт из сообщения в Discord
+            const grid = () => document.getElementById('repViewPhotosGrid');
             try {
-                const q = r.discord.threadId ? '?thread_id=' + encodeURIComponent(r.discord.threadId) : '';
-                const res = await fetch(UNIT_REPORT_WEBHOOK + '/messages/' + encodeURIComponent(r.discord.messageId) + q);
-                if (!res.ok) throw new Error('http_' + res.status);
-                const msg = await res.json();
-                const atts = (msg.attachments || []).filter(x => /^https:\/\//.test(x.url || ''));
-                const sig = atts.find(x => x.filename === 'signature.png');
-                const photos = atts.filter(x => x !== sig && /^image\//.test(x.content_type || 'image/'));
-                const grid = document.getElementById('repViewPhotosGrid');
-                if (grid) grid.innerHTML = photos.length ? photos.map(p => `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="rep-photo-thumb block"><img src="${escapeHtml(p.url)}" alt="Скриншот" loading="lazy"></a>`).join('') : '<div class="col-span-full text-[11px] text-sunset-200/60">Скриншоты не найдены</div>';
+                const data = await eowApi('/api/reports/' + encodeURIComponent(r.id) + '/attachments');
+                const photos = (data.photos || []).filter(p => /^https:\/\//.test(p.url || ''));
+                if (grid()) grid().innerHTML = photos.length
+                    ? photos.map(p => `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" class="rep-photo-thumb block"><img src="${escapeHtml(p.url)}" alt="Скриншот" loading="lazy"></a>`).join('')
+                    : '<div class="col-span-full text-[11px] text-sunset-200/60">Скриншоты не найдены</div>';
                 const sigBox = document.getElementById('repViewSignature');
-                if (sigBox && sig) sigBox.innerHTML = `<img src="${escapeHtml(sig.url)}" alt="Подпись" class="h-12 w-auto">`;
+                if (sigBox && /^https:\/\//.test(data.signature || '')) sigBox.innerHTML = `<img src="${escapeHtml(data.signature)}" alt="Подпись" class="h-12 w-auto">`;
             } catch (e) {
-                const grid = document.getElementById('repViewPhotosGrid');
-                if (grid) grid.innerHTML = '<div class="col-span-full text-[11px] text-amber-300/80">Не удалось загрузить скриншоты из Discord</div>';
+                if (grid()) grid().innerHTML = '<div class="col-span-full text-[11px] text-amber-300/80">Не удалось загрузить скриншоты</div>';
             }
         }
 
@@ -8646,7 +8653,7 @@
             unitReportsPhotos.splice(i, 1);
             renderReportPhotosPreview();
         }
-        // ужимаем скриншот, чтобы точно пролез в лимиты Discord
+        // ужимаем скриншот в JPEG, чтобы все вложения влезли в лимит Discord (10 МБ на сообщение)
         function compressReportImage(file) {
             return new Promise((resolve) => {
                 const img = new Image();
@@ -8657,7 +8664,7 @@
                     cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
                     cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
                     URL.revokeObjectURL(src);
-                    cv.toBlob(b => resolve(b || file), 'image/jpeg', 0.85);
+                    cv.toBlob(b => resolve(b), 'image/jpeg', 0.82);
                 };
                 img.onerror = () => { URL.revokeObjectURL(src); resolve(null); };
                 img.src = src;
@@ -8669,8 +8676,9 @@
                 if (unitReportsPhotos.length >= UNIT_REPORT_MAX_PHOTOS) { showToast(`Можно прикрепить не больше ${UNIT_REPORT_MAX_PHOTOS} скриншотов`); break; }
                 const blob = f.type === 'image/gif' ? f : await compressReportImage(f);
                 if (!blob) { showToast('Не удалось прочитать файл ' + f.name); continue; }
-                if (blob.size > 9.5 * 1024 * 1024) { showToast('Файл слишком большой: ' + f.name); continue; }
-                unitReportsPhotos.push({ blob, url: URL.createObjectURL(blob), ext: f.type === 'image/gif' ? 'gif' : 'jpg' });
+                const total = unitReportsPhotos.reduce((s, p) => s + p.blob.size, 0) + blob.size;
+                if (total > 9 * 1024 * 1024) { showToast('Слишком большой общий объём скриншотов: ' + f.name); continue; }
+                unitReportsPhotos.push({ blob, url: URL.createObjectURL(blob) });
             }
             renderReportPhotosPreview();
         }
@@ -8682,63 +8690,13 @@
             });
         }
 
-        async function postUnitReportToDiscord(rep, sigBlob) {
-            const c = unitReportCat(rep.category), a = unitReportAddr(rep.addressee);
-            const siteUrl = 'https://eclipseofwar.com/#report-' + rep.id;
-            const main = {
-                color: UNIT_REPORT_COLOR,
-                url: siteUrl,
-                title: ('Рапорт · ' + rep.subject).slice(0, 256),
-                description: rep.body.slice(0, 4000),
-                fields: [
-                    { name: 'Категория', value: c.title, inline: true },
-                    { name: 'Адресат', value: a.title, inline: true },
-                    { name: 'Подразделение', value: (rep.unitTitle || '—').slice(0, 1024), inline: true },
-                    { name: 'Подал', value: `${rep.charName}\nSteam: ${rep.steamName} (${rep.authorSteamId})`.slice(0, 1024), inline: false },
-                    { name: 'Подпись', value: (rep.signature || '—').slice(0, 1024), inline: false },
-                ],
-                footer: { text: 'Eclipse of War · Рапортация' },
-                timestamp: rep.time,
-            };
-            const embeds = [main];
-            const fd = new FormData();
-            const attachments = [];
-            unitReportsPhotos.forEach((p, i) => {
-                const name = `photo_${i + 1}.${p.ext}`;
-                fd.append(`files[${attachments.length}]`, p.blob, name);
-                attachments.push({ id: attachments.length, filename: name });
-                if (i === 0) main.image = { url: 'attachment://' + name };
-                else embeds.push({ url: siteUrl, color: UNIT_REPORT_COLOR, image: { url: 'attachment://' + name } });
-            });
-            if (sigBlob) {
-                fd.append(`files[${attachments.length}]`, sigBlob, 'signature.png');
-                attachments.push({ id: attachments.length, filename: 'signature.png' });
-                main.thumbnail = { url: 'attachment://signature.png' };
-            }
-            const payload = { username: 'EOW · Рапортация', embeds, attachments, allowed_mentions: { parse: [] } };
-
-            const send = async (threadId, threadName) => {
-                const body = new FormData();
-                for (const [k, v] of fd.entries()) body.append(k, v, v.name);
-                body.append('payload_json', JSON.stringify(threadName ? Object.assign({}, payload, { thread_name: threadName.slice(0, 100) }) : payload));
-                const q = '?wait=true' + (threadId ? '&thread_id=' + threadId : '');
-                const res = await fetch(UNIT_REPORT_WEBHOOK + q, { method: 'POST', body });
-                let data = null; try { data = await res.json(); } catch (e) { /* ignore */ }
-                return { res, data };
-            };
-            let { res, data } = await send(c.thread, null);
-            // канал вебхука — форум: для «Другое» создаём отдельную ветку
-            if (!res.ok && !c.thread && data && data.code === 220001) ({ res, data } = await send('', `${c.title} · ${rep.subject}`));
-            if (!res.ok) { const e = new Error('discord_' + res.status); e.status = res.status; e.data = data; throw e; }
-            return { messageId: data && data.id, threadId: c.thread || (data && data.channel_id) || '' };
-        }
-
         async function submitUnitReport(e) {
             e.preventDefault();
             if (unitReportsSending) return;
             const u = EOW_AUTH.user;
             const ch = getActiveReportCharacter();
             if (!u || !ch) { showToast('Войдите в профиль, чтобы подать рапорт'); return; }
+            if (!EOW_AUTH_API) { showToast('Сервер сайта не подключён'); return; }
             const val = id => (document.getElementById(id)?.value || '').trim();
             const category = val('repCategory'), addressee = val('repAddressee');
             const subject = val('repSubject'), body = val('repBody'), signature = val('repSignatureCaption');
@@ -8748,32 +8706,38 @@
             if (!repSigDrawn) { showToast('Поставьте подпись в поле «Подпись»'); return; }
             if (!signature) { showToast('Укажите расшифровку подписи'); return; }
 
-            const rep = {
-                id: 'rep_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-                unit: ch.unitKey, unitTitle: ch.unitTitle,
-                category, addressee, subject, body, signature,
-                charName: ch.name, authorSteamId: u.steamId64, steamName: cleanNick(u.name),
-                photos: unitReportsPhotos.length, time: new Date().toISOString(),
-            };
+            const fd = new FormData();
+            fd.append('payload', JSON.stringify({ unit: ch.unitKey, unitTitle: ch.unitTitle, charName: ch.name, category, addressee, subject, body, signature }));
+            unitReportsPhotos.forEach((p, i) => fd.append('photos', p.blob, `photo_${i + 1}.${p.blob.type === 'image/gif' ? 'gif' : 'jpg'}`));
+            const sig = await reportSignatureBlob();
+            if (sig) fd.append('signature', sig, 'signature.png');
+
             const st = document.getElementById('repComposeStatus');
             const btn = document.getElementById('repSubmitBtn');
             unitReportsSending = true;
             if (btn) btn.disabled = true;
-            if (st) st.textContent = 'Отправка рапорта в Discord…';
+            if (st) st.textContent = 'Отправка рапорта…';
+            let data = null, status = 0;
             try {
-                rep.discord = await postUnitReportToDiscord(rep, await reportSignatureBlob());
-            } catch (err) {
-                console.warn('Рапорт: ошибка Discord', err.status, err.data);
-                if (st) st.textContent = `Ошибка отправки${err.status ? ' (' + err.status + ')' : ''}`;
-                showToast(err.status === 413 ? 'Скриншоты слишком тяжёлые — уберите часть' : 'Не удалось отправить рапорт в Discord. Попробуйте ещё раз');
-                unitReportsSending = false; if (btn) btn.disabled = false;
+                const res = await fetch(EOW_AUTH_API.replace(/\/+$/, '') + '/api/reports', {
+                    method: 'POST',
+                    headers: { Authorization: 'Bearer ' + (lsGet(EOW_TOKEN_KEY) || '') },
+                    body: fd,
+                });
+                status = res.status;
+                try { data = await res.json(); } catch (err) { data = null; }
+                if (res.status === 401) setAuthUser(null, true);
+            } catch (err) { status = 0; }
+            unitReportsSending = false;
+            if (btn) btn.disabled = false;
+            if (!(status >= 200 && status < 300) || !data || !data.report) {
+                const msg = status === 0 ? 'Нет связи с сервером сайта' : unitReportErr(data && data.error, `Ошибка отправки (${status})`);
+                if (st) st.textContent = msg;
+                showToast(msg);
                 return;
             }
-            saveUnitReportsLocal([rep, ...unitReportsLocal()]);
-            unitReportsStore = [rep, ...unitReportsStore.filter(x => x && x.id !== rep.id)].slice(0, UNIT_REPORT_STORE_LIMIT);
-            pushUnitReports(rep);
-
-            unitReportsSending = false; if (btn) btn.disabled = false;
+            const rep = data.report;
+            unitReportsByUnit[rep.unit] = [rep, ...(unitReportsByUnit[rep.unit] || []).filter(x => x.id !== rep.id)];
             if (st) st.textContent = '';
             document.getElementById('repComposeForm')?.reset();
             unitReportsPhotos.forEach(p => URL.revokeObjectURL(p.url)); unitReportsPhotos = [];
@@ -8781,45 +8745,6 @@
             hideRepModal('reportComposeModal');
             renderUnitReportsTab();
             showToast(`Рапорт «${subject}» отправлен: ${unitReportAddr(addressee).title}`);
-        }
-
-        // ---- синхронизация с сервером сайта (ключ unitReports) ----
-        function applyUnitReportsFromServer(entry) {
-            if (!entry || !Array.isArray(entry.value)) return;
-            unitReportsStore = entry.value.map(sanitizeUnitReport).filter(Boolean);
-            unitReportsVersion = typeof entry.version === 'number' ? entry.version : unitReportsVersion;
-            // локальные рапорта, уже попавшие на сервер, больше не держим
-            const ids = new Set(unitReportsStore.map(r => r.id));
-            const left = unitReportsLocal().filter(r => r && !ids.has(r.id));
-            saveUnitReportsLocal(left);
-            renderUnitReportsTab();
-            if (left.length && EOW_AUTH.user) left.forEach(r => pushUnitReports(r));
-        }
-        async function pushUnitReports(rep, attempt = 0) {
-            if (!EOW_AUTH_API || !EOW_AUTH.user || !unitReportsServerOk) return;
-            const value = [rep, ...unitReportsStore.filter(x => x && x.id !== rep.id)].slice(0, UNIT_REPORT_STORE_LIMIT);
-            let res, data = {};
-            try {
-                res = await fetch(EOW_AUTH_API.replace(/\/+$/, '') + '/api/content/unitReports', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (lsGet(EOW_TOKEN_KEY) || '') },
-                    body: JSON.stringify({ baseVersion: unitReportsVersion, value }),
-                });
-                try { data = await res.json(); } catch (e) { /* ignore */ }
-            } catch (e) { return; } // нет связи — рапорт остаётся в локальной очереди
-            if (res.ok) {
-                applyUnitReportsFromServer({ value: data.value || value, version: data.version });
-                return;
-            }
-            if (res.status === 409 && attempt < 3) {
-                unitReportsStore = Array.isArray(data.value) ? data.value.map(sanitizeUnitReport).filter(Boolean) : unitReportsStore;
-                if (typeof data.version === 'number') unitReportsVersion = data.version;
-                return pushUnitReports(rep, attempt + 1);
-            }
-            if (res.status === 401) { setAuthUser(null, true); return; }
-            // сервер пока не знает ключ unitReports или не пускает игроков — рапорт виден локально и уже ушёл в Discord
-            unitReportsServerOk = false;
-            console.warn('Рапортация: сервер не сохранил рапорт', res.status, data && data.error);
         }
 
         applyCachedContent();
