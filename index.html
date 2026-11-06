@@ -359,14 +359,14 @@
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes repSheetDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(60px) scale(.97); } }
-        #reportComposeModal.flex, #reportViewModal.flex { animation: modalBackdropIn .25s ease forwards; }
-        #reportComposeModal.flex > div, #reportViewModal.flex > div {
+        #reportComposeModal.flex, #reportViewModal.flex, #hqReportModal.flex { animation: modalBackdropIn .25s ease forwards; }
+        #reportComposeModal.flex > div, #reportViewModal.flex > div, #hqReportModal.flex > div {
             animation: repSheetUp .55s var(--eow-ease) both;
             max-height: calc(100svh - 2rem); overflow-y: auto; overscroll-behavior: contain;
             scrollbar-width: thin; scrollbar-color: rgba(255, 133, 89, 0.4) transparent;
         }
-        #reportComposeModal.rep-closing > div, #reportViewModal.rep-closing > div { animation: repSheetDown .28s ease forwards; }
-        #reportComposeModal.rep-closing, #reportViewModal.rep-closing { animation: modalBackdropIn .28s ease reverse forwards; }
+        #reportComposeModal.rep-closing > div, #reportViewModal.rep-closing > div, #hqReportModal.rep-closing > div { animation: repSheetDown .28s ease forwards; }
+        #reportComposeModal.rep-closing, #reportViewModal.rep-closing, #hqReportModal.rep-closing { animation: modalBackdropIn .28s ease reverse forwards; }
         .rep-photo-thumb { position: relative; aspect-ratio: 1 / 1; border-radius: .9rem; overflow: hidden; border: 1px solid rgba(255,255,255,.12); }
         .rep-photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .rep-photo-thumb button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 999px; background: rgba(10,4,6,.8); color: #fff; font-size: 13px; line-height: 22px; }
@@ -863,8 +863,8 @@
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
                     </button>
                     <a href="http://45.136.204.181:8081/join.html?a=45.136.204.181:27015&amp;p=ave69th" target="_blank" rel="noopener noreferrer" title="Подключиться к серверу" class="h-10 px-3 sm:px-4 rounded-full bg-gradient-to-r from-rosewood-400 to-sunset-500 text-xs font-semibold text-white flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <span class="online-dot w-2 h-2 rounded-full bg-emerald-300"></span>
-                        <span class="font-mono text-[11px] tracking-tight whitespace-nowrap">94<span class="opacity-70"> / </span>128</span>
+                        <span id="headerOnlineDot" class="online-dot w-2 h-2 rounded-full bg-emerald-300"></span>
+                        <span id="headerOnlineCount" class="font-mono text-[11px] tracking-tight whitespace-nowrap">—<span class="opacity-70"> / </span>64</span>
                     </a>
                     <button id="mobileNavToggle" type="button" onclick="toggleMobileNav()" class="xl:hidden w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex flex-col items-center justify-center gap-[3px] shrink-0" aria-label="Открыть меню разделов" aria-expanded="false" aria-controls="mobileNavPanel">
                         <span class="burger-line block w-4 h-[2px] rounded-full bg-sunset-200"></span>
@@ -2367,6 +2367,17 @@
                         </div>
                     </div>
 
+                    <!-- Каналы приказов и рапортов: вебхуки хранятся на сервере авторизации -->
+                    <div id="discordChannelsCard" class="hidden p-4 sm:p-5 rounded-2xl bg-dusk-950/90 border border-white/10 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="text-[11px] font-mono uppercase tracking-wider text-sunset-400">Каналы приказов и рапортов</div>
+                            <button type="button" onclick="loadDiscordChannels(true)" class="dc-btn"><span>Обновить</span></button>
+                        </div>
+                        <div id="dcChanOrders" class="space-y-2.5"></div>
+                        <div class="border-t border-white/10"></div>
+                        <div id="dcChanReports" class="space-y-2.5"></div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-xs text-sunset-200 mb-1">Заголовок боевой сводки / анонса</label>
@@ -3001,19 +3012,42 @@
 
             <!-- 5. Рапортация -->
             <div id="cmd-tab-reports" class="cmd-view-section hidden space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    <div class="lg:col-span-7 soft-glass rounded-3xl p-6 sm:p-7 space-y-4 border border-sunset-400/30">
-                        <h3 class="font-display font-bold text-lg text-white">Подать рапорт в Штаб Сектора</h3>
-                        <form onsubmit="submitCommanderReport(event)" class="space-y-4">
+                <div class="soft-glass rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <span class="text-xs font-mono text-sunset-400 uppercase">Рапортация гарнизона</span>
+                        <h2 class="font-display font-bold text-2xl text-white mt-0.5">Рапорта подразделений</h2>
+                        <p id="cmdRepCounter" class="text-xs text-sunset-200/70 mt-1"></p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="cmdRepFilterCat" onchange="renderCommanderReports()" aria-label="Категория рапортов" class="px-3 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
+                            <option value="">Все категории</option>
+                        </select>
+                        <button type="button" onclick="loadCommanderReports(true)" class="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-sunset-200 text-xs font-medium">Обновить</button>
+                        <button type="button" onclick="openHqReportModal()" class="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 text-white font-semibold text-xs flex items-center gap-2">
+                            <i data-lucide="landmark" class="w-4 h-4"></i> Рапорт в штаб
+                        </button>
+                    </div>
+                </div>
+                <div id="cmdReportsGroups" class="space-y-5"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- РАПОРТ В ШТАБ (режим командира): только в базу сайта, без Discord -->
+    <div id="hqReportModal" onclick="if(event.target === this) closeHqReportModal()" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-dusk-950/85 backdrop-blur-md p-3 sm:p-4">
+        <div class="soft-glass w-full max-w-3xl max-h-[92vh] overflow-y-auto custom-dark-scroll rounded-3xl p-5 sm:p-7 border border-sunset-400/30 shadow-2xl space-y-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <span class="text-[11px] font-mono text-sunset-400 uppercase">Режим командира</span>
+                    <h3 class="font-display font-bold text-xl text-white">Рапорт в штаб сектора</h3>
+                </div>
+                <button type="button" onclick="closeHqReportModal()" aria-label="Закрыть" class="shrink-0 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-sunset-200"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+                        <form id="hqReportForm" onsubmit="submitHqReport(event)" class="space-y-4">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div>
                                     <label class="block text-xs text-sunset-200 mb-1">Категория рапорта</label>
-                                    <select id="repCategoryInput" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
-                                        <option value="Боевой рапорт после операции">Боевой рапорт после операции</option>
-                                        <option value="Отчет о проведении тренировки">Отчет о проведении тренировки</option>
-                                        <option value="Дисциплинарное взыскание / Трибунал">Дисциплинарное взыскание / Трибунал</option>
-                                        <option value="Запрос на снабжение / Повышение">Запрос на снабжение / Повышение</option>
-                                    </select>
+                                    <select id="repCategoryInput" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white"></select>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-sunset-200 mb-1">Тема рапорта</label>
@@ -3070,15 +3104,15 @@
                                     <p>Подробное изложение хода операции, отличившихся бойцов, приложенных фото/видео материалов и потерь...</p>
                                 </div>
                             </div>
-                            <button type="submit" class="w-full py-3 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 text-white font-semibold text-xs sm:text-sm shadow-lg">Отправить рапорт в Штаб</button>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
+                                <div>
+                                    <label for="hqSignatureInput" class="block text-xs text-sunset-200 mb-1">Подпись (звание | номер | позывной)</label>
+                                    <input id="hqSignatureInput" required type="text" maxlength="80" placeholder="Например: CC | 2224 | Cody" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
+                                </div>
+                                <button id="hqReportSendBtn" type="submit" class="w-full py-3 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 text-white font-semibold text-xs sm:text-sm shadow-lg">Отправить рапорт в штаб</button>
+                            </div>
+                            <p class="text-[11px] text-sunset-200/55">Рапорт в штаб сохраняется только на сайте — в Discord он не уходит. Его видят командиры и администрация в режиме командира.</p>
                         </form>
-                    </div>
-                    <div class="lg:col-span-5 soft-glass rounded-3xl p-6 space-y-4">
-                        <h3 class="font-display font-bold text-lg text-white">Журнал поданных рапортов</h3>
-                        <div id="cmdReportsListContainer" class="space-y-3 max-h-[600px] overflow-y-auto custom-dark-scroll pr-1"></div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -4665,7 +4699,7 @@
             if (tabKey === 'orders') renderCommanderDocsAndOrders('order');
             if (tabKey === 'faction') renderCommanderFactionManagement();
             if (tabKey === 'training') renderCommanderTrainings();
-            if (tabKey === 'reports') renderCommanderReports();
+            if (tabKey === 'reports') loadCommanderReports();
             refreshIcons();
         }
 
@@ -5822,56 +5856,243 @@
             showToast('Новость удалена с портала');
         }
 
-        // РАПОРТАЦИЯ В РЕЖИМЕ КОМАНДИРА
-        let commanderReportsStore = [
-            { id: 1, category: 'Боевой рапорт после операции', subject: 'Успешное удержание сектора Аванпост Заката', author: 'CC | 2224 | Cody', corps: 'Штурмовой Корпус', status: 'Принято Штабом', time: '20.10.2026 21:10', body: 'Силами 1-й роты отражена атака бронегруппы САД. Потерь среди личного состава нет, уничтожено 2 танка AAT.' }
+        // ===================== РАПОРТАЦИЯ В РЕЖИМЕ КОМАНДИРА =====================
+        // Рапорта всех подразделений (с сервера сайта), сгруппированные по подразделению, откуда пришёл рапорт.
+        // «Рапорт в штаб» — отдельная кнопка: рапорт хранится только в базе сайта и в Discord не уходит.
+        const HQ_REPORT_CATEGORIES = [
+            { key: 'combat', title: 'Боевой рапорт после операции' },
+            { key: 'training', title: 'Отчёт о проведении тренировки' },
+            { key: 'discipline', title: 'Дисциплинарное взыскание / Трибунал' },
+            { key: 'supply', title: 'Запрос на снабжение / Повышение' },
+            { key: 'other', title: 'Другое' },
         ];
+        const HQ_REPORT_STATUS = {
+            new: ['На рассмотрении Штаба', 'bg-amber-500/15 border-amber-400/35 text-amber-300'],
+            accepted: ['Принят Штабом', 'bg-emerald-500/15 border-emerald-400/35 text-emerald-300'],
+            rejected: ['Отклонён Штабом', 'bg-rosewood-500/20 border-rosewood-400/40 text-rosewood-300'],
+        };
+        const cmdReports = { loaded: false, loading: false, error: '', reports: [], hq: [], collapsed: {} };
+        let hqReportSending = false;
+
+        const cmdUnitTitle = key => (corpsDatabase[key] && corpsDatabase[key].title) || (String(key || '').startsWith('div:') ? key.slice(4) : (key || 'Без подразделения'));
+        const plainFromHtml = html => { const d = document.createElement('div'); d.innerHTML = sanitizeHtml(String(html || '')); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
+
+        async function loadCommanderReports(force) {
+            if (cmdReports.loading) return;
+            if (cmdReports.loaded && !force) { renderCommanderReports(); return; }
+            if (!EOW_AUTH.user) { cmdReports.error = 'unauthorized'; renderCommanderReports(); return; }
+            cmdReports.loading = true;
+            renderCommanderReports();
+            try {
+                const d = await eowApi('/api/reports/all');
+                cmdReports.reports = Array.isArray(d.reports) ? d.reports : [];
+                cmdReports.hq = Array.isArray(d.hq) ? d.hq : [];
+                cmdReports.loaded = true;
+                cmdReports.error = '';
+            } catch (e) {
+                cmdReports.error = e.message || 'network';
+            }
+            cmdReports.loading = false;
+            renderCommanderReports();
+        }
+
+        function toggleCmdRepGroup(key) {
+            cmdReports.collapsed[key] = !cmdReports.collapsed[key];
+            renderCommanderReports();
+        }
+
+        function cmdUnitReportCard(r) {
+            const c = unitReportCat(r.category), a = unitReportAddr(r.addressee);
+            const body = String(r.body || '');
+            return `
+                <button type="button" onclick="openReportView('${escapeHtml(r.id)}')" class="rep-card text-left w-full p-4 rounded-2xl bg-dusk-950/80 border border-white/10 space-y-2">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="px-2.5 py-0.5 rounded-full bg-rosewood-500/25 border border-rosewood-400/40 text-rosewood-300 font-mono text-[10px]">${escapeHtml(c.title)}</span>
+                        <span class="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/15 text-sunset-200/80 font-mono text-[10px]">→ ${escapeHtml(a.title)}</span>
+                        ${r.photos ? `<span class="ml-auto text-[10px] font-mono text-sunset-200/60">📷 ${r.photos | 0}</span>` : ''}
+                    </div>
+                    <div class="font-display font-bold text-sm text-white break-words">${escapeHtml(r.subject)}</div>
+                    <div class="text-xs text-sunset-200/75 leading-relaxed line-clamp-3 whitespace-pre-line break-words">${escapeHtml(body.length > 220 ? body.slice(0, 220) + '…' : body)}</div>
+                    <div class="text-[10px] font-mono text-sunset-200/50 pt-2 border-t border-white/5 flex flex-wrap gap-2 justify-between">
+                        <span>Подал: ${escapeHtml(r.charName || '')}</span><span>${formatReportTime(r.time)}</span>
+                    </div>
+                </button>`;
+        }
+
+        function cmdHqReportCard(r) {
+            const st = HQ_REPORT_STATUS[r.status] || HQ_REPORT_STATUS.new;
+            const text = plainFromHtml(r.body);
+            return `
+                <button type="button" onclick="openHqReportView('${escapeHtml(r.id)}')" class="rep-card text-left w-full p-4 rounded-2xl bg-dusk-950/80 border border-sunset-400/25 space-y-2">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="px-2.5 py-0.5 rounded-full bg-sunset-500/20 border border-sunset-400/35 text-sunset-300 font-mono text-[10px]">${escapeHtml(r.categoryTitle || '')}</span>
+                        <span class="px-2.5 py-0.5 rounded-full border font-mono text-[10px] ${st[1]}">${escapeHtml(st[0])}</span>
+                    </div>
+                    <div class="font-display font-bold text-sm text-white break-words">${escapeHtml(r.subject)}</div>
+                    <div class="text-xs text-sunset-200/75 leading-relaxed line-clamp-3 break-words">${escapeHtml(text.length > 220 ? text.slice(0, 220) + '…' : text)}</div>
+                    <div class="text-[10px] font-mono text-sunset-200/50 pt-2 border-t border-white/5 flex flex-wrap gap-2 justify-between">
+                        <span>${escapeHtml(r.signature || r.author || '')}${r.unitTitle ? ' · ' + escapeHtml(r.unitTitle) : ''}</span><span>${formatReportTime(r.time)}</span>
+                    </div>
+                </button>`;
+        }
 
         function renderCommanderReports() {
-            const box = document.getElementById('cmdReportsListContainer');
+            const box = document.getElementById('cmdReportsGroups');
             if (!box) return;
-            box.innerHTML = commanderReportsStore.map(r => `
-                <div class="p-4 rounded-2xl bg-dusk-950/80 border border-white/10 space-y-2">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="px-2.5 py-0.5 rounded-full bg-sunset-500/20 text-sunset-300 font-mono text-[10px]">${r.category}</span>
-                        <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px]">${r.status}</span>
-                    </div>
-                    <div class="font-display font-bold text-sm text-white">${r.subject}</div>
-                    <div class="rich-editor-content text-xs text-sunset-200/80 leading-relaxed">${r.body}</div>
-                    <div class="text-[10px] font-mono text-sunset-200/50 pt-1 border-t border-white/5 flex flex-wrap gap-2 justify-between items-center">
-                        <span>Подал: ${r.author} (${r.corps})</span>
-                        <span class="flex items-center gap-3">${r.time}${isCurrentUserHardcodedOwner() ? ` <button onclick="deleteCommanderReport(${typeof r.id === 'number' ? r.id : `'${r.id}'`})" class="text-rosewood-300 hover:text-white">Удалить</button>` : ''}</span>
-                    </div>
-                </div>
-            `).join('');
+            const sel = document.getElementById('cmdRepFilterCat');
+            if (sel && sel.options.length <= 1) {
+                sel.insertAdjacentHTML('beforeend', UNIT_REPORT_CATEGORIES.map(c => `<option value="${c.key}">${escapeHtml(c.title)}</option>`).join('')
+                    + '<option value="__hq">Только рапорты в штаб</option>');
+            }
+            const cat = sel ? sel.value : '';
+            const counter = document.getElementById('cmdRepCounter');
+            const note = html => { box.innerHTML = `<div class="p-6 rounded-3xl bg-dusk-950/60 border border-dashed border-white/15 text-center text-xs text-sunset-200/70 leading-relaxed">${html}</div>`; };
+            if (!cmdReports.loaded) {
+                if (counter) counter.textContent = '';
+                if (cmdReports.loading || !cmdReports.error) return note('Загрузка рапортов…');
+                return note(`${escapeHtml(unitReportErr(cmdReports.error, 'Не удалось загрузить рапорта'))}. <button type="button" onclick="loadCommanderReports(true)" class="underline text-sunset-300">Повторить</button>`);
+            }
+            const groups = [];
+            const hq = cat && cat !== '__hq' ? [] : cmdReports.hq;
+            if (hq.length) groups.push({ key: '__hq', title: 'Рапорты в штаб', sub: 'Хранятся только на сайте, в Discord не уходят', items: hq, hq: true });
+            if (cat !== '__hq') {
+                const byUnit = new Map();
+                cmdReports.reports.filter(r => !cat || r.category === cat).forEach(r => {
+                    const k = r.unit || '—';
+                    // название подразделения сайта по ключу (медики/инженеры 69-го полка — разные подразделения), иначе — из рапорта
+                    if (!byUnit.has(k)) byUnit.set(k, { key: k, title: (corpsDatabase[k] && corpsDatabase[k].title) || r.unitTitle || cmdUnitTitle(k), items: [] });
+                    byUnit.get(k).items.push(r);
+                });
+                // подразделения со свежими рапортами — выше
+                [...byUnit.values()].sort((a, b) => String(b.items[0].time).localeCompare(String(a.items[0].time))).forEach(g => groups.push(g));
+            }
+            const unitCount = groups.filter(g => !g.hq).length;
+            const total = groups.reduce((n, g) => n + g.items.length, 0);
+            if (counter) counter.textContent = total
+                ? `Рапортов: ${total} · подразделений: ${unitCount}${cmdReports.hq.length ? ` · в штаб: ${cmdReports.hq.length}` : ''}`
+                : '';
+            if (!groups.length) return note(cat ? 'Рапортов этой категории пока нет.' : 'Рапортов пока нет. Когда бойцы подадут рапорт на сайте, он появится здесь в своём подразделении.');
+            box.innerHTML = groups.map(g => {
+                const closed = !!cmdReports.collapsed[g.key];
+                const last = g.items[0] ? formatReportTime(g.items[0].time) : '';
+                return `
+                <section class="soft-glass rounded-3xl p-5 sm:p-6 space-y-4 ${g.hq ? 'border border-sunset-400/30' : ''}">
+                    <button type="button" onclick="toggleCmdRepGroup('${escapeHtml(g.key)}')" aria-expanded="${closed ? 'false' : 'true'}" class="w-full flex flex-wrap items-center justify-between gap-3 text-left">
+                        <span class="min-w-0">
+                            <span class="block font-display font-bold text-lg text-white truncate">${escapeHtml(g.title)}</span>
+                            <span class="block text-[11px] text-sunset-200/60">${g.sub ? escapeHtml(g.sub) + ' · ' : ''}последний: ${escapeHtml(last)}</span>
+                        </span>
+                        <span class="flex items-center gap-2 shrink-0">
+                            <span class="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono text-sunset-200">${g.items.length} ${ruPlural(g.items.length, 'рапорт', 'рапорта', 'рапортов')}</span>
+                            <span class="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-sunset-300 text-xs">${closed ? '▸' : '▾'}</span>
+                        </span>
+                    </button>
+                    ${closed ? '' : `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">${g.items.map(r => g.hq ? cmdHqReportCard(r) : cmdUnitReportCard(r)).join('')}</div>`}
+                </section>`;
+            }).join('');
         }
 
-        function deleteCommanderReport(id) {
-            if (!isCurrentUserHardcodedOwner()) return;
-            commanderReportsStore = commanderReportsStore.filter(x => x.id !== id);
-            renderCommanderReports();
-            showToast('Рапорт удалён');
-        }
-
-        function submitCommanderReport(e) {
-            e.preventDefault();
+        // ---- рапорт в штаб ----
+        function openHqReportModal() {
+            if (!EOW_AUTH.user) { showToast('Войдите через Steam'); return; }
+            const sel = document.getElementById('repCategoryInput');
+            if (sel && !sel.options.length) sel.innerHTML = HQ_REPORT_CATEGORIES.map(c => `<option value="${c.key}">${escapeHtml(c.title)}</option>`).join('');
+            const sig = document.getElementById('hqSignatureInput');
             const rec = getCurrentUserRecord();
-            const corpsTitle = corpsDatabase[rec?.commanderCorps || 'assault']?.title || 'Штурмовой Корпус';
-            const repArea = document.getElementById('repRichEditor');
-            commanderReportsStore.unshift({
-                id: Date.now(),
-                category: document.getElementById('repCategoryInput').value,
-                subject: document.getElementById('repSubjectInput').value,
-                body: repArea ? repArea.innerHTML : '',
-                author: rec ? rec.nick : 'LT | 4106 | Shan',
-                corps: corpsTitle,
-                status: 'На рассмотрении Штаба',
-                time: new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-            });
-            e.target.reset();
-            if (repArea) repArea.innerHTML = '<p>Рапорт отправлен. Введите новый доклад...</p>';
-            renderCommanderReports();
-            showToast('Официальный рапорт передан в Штаб Сектора!');
+            if (sig && !sig.value) sig.value = rec && rec.nick && rec.nick.includes('|') ? rec.nick : '';
+            showRepModal('hqReportModal');
+        }
+        function closeHqReportModal() { hideRepModal('hqReportModal'); }
+
+        async function submitHqReport(e) {
+            e.preventDefault();
+            if (hqReportSending) return;
+            const editor = document.getElementById('repRichEditor');
+            const rec = getCurrentUserRecord();
+            const corpsKey = (EOW_AUTH.user && EOW_AUTH.user.commanderCorps) || (rec && rec.commanderCorps) || '';
+            const payload = {
+                category: (document.getElementById('repCategoryInput') || {}).value || 'other',
+                subject: ((document.getElementById('repSubjectInput') || {}).value || '').trim(),
+                body: editor ? sanitizeHtml(editor.innerHTML) : '',
+                signature: ((document.getElementById('hqSignatureInput') || {}).value || '').trim(),
+                unitTitle: corpsKey && corpsDatabase[corpsKey] ? corpsDatabase[corpsKey].title : '',
+            };
+            if (!payload.subject || !plainFromHtml(payload.body)) { showToast('Заполните тему и текст рапорта'); return; }
+            if (!payload.signature) { showToast('Укажите подпись'); return; }
+            const btn = document.getElementById('hqReportSendBtn');
+            hqReportSending = true;
+            if (btn) { btn.disabled = true; btn.textContent = 'Отправка…'; }
+            try {
+                const res = await eowApi('/api/reports/hq', { method: 'POST', body: JSON.stringify(payload) });
+                if (res && res.report) cmdReports.hq.unshift(res.report);
+                const form = document.getElementById('hqReportForm');
+                if (form) form.reset();
+                if (editor) editor.innerHTML = '<p>Рапорт передан в штаб. Введите новый доклад…</p>';
+                closeHqReportModal();
+                cmdReports.collapsed.__hq = false;
+                renderCommanderReports();
+                showToast('Рапорт передан в штаб');
+            } catch (err) {
+                showToast(unitReportErr(err.message, 'Не удалось отправить рапорт в штаб'));
+            } finally {
+                hqReportSending = false;
+                if (btn) { btn.disabled = false; btn.textContent = 'Отправить рапорт в штаб'; }
+            }
+        }
+
+        function openHqReportView(id) {
+            const r = cmdReports.hq.find(x => x.id === id);
+            const card = document.getElementById('reportViewCard');
+            if (!r || !card) return;
+            const st = HQ_REPORT_STATUS[r.status] || HQ_REPORT_STATUS.new;
+            const canJudge = isCurrentUserSiteAdmin();
+            const canDelete = isCurrentUserHardcodedOwner();
+            card.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap gap-2 mb-1.5">
+                            <span class="px-2.5 py-0.5 rounded-full bg-sunset-500/20 border border-sunset-400/35 text-sunset-300 font-mono text-[10px]">${escapeHtml(r.categoryTitle || '')}</span>
+                            <span class="px-2.5 py-0.5 rounded-full border font-mono text-[10px] ${st[1]}">${escapeHtml(st[0])}${r.statusBy && r.status !== 'new' ? ' · ' + escapeHtml(r.statusBy) : ''}</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white break-words">${escapeHtml(r.subject)}</h3>
+                        <p class="text-[11px] font-mono text-sunset-200/60 mt-1">Рапорт в штаб${r.unitTitle ? ' · ' + escapeHtml(r.unitTitle) : ''} · ${formatReportTime(r.time)}</p>
+                    </div>
+                    <button type="button" onclick="closeReportView()" aria-label="Закрыть" class="shrink-0 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-sunset-200"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div class="rich-editor-content p-4 rounded-2xl bg-dusk-950/80 border border-white/10 text-sm text-white/90 leading-relaxed break-words max-h-[55vh] overflow-y-auto custom-dark-scroll">${sanitizeHtml(r.body)}</div>
+                <div class="flex flex-wrap items-end justify-between gap-3 pt-3 border-t border-white/10">
+                    <div class="text-[11px] text-sunset-200/70">Steam: <span class="font-mono">${escapeHtml(r.author || '')}</span></div>
+                    <div class="text-[11px] font-mono text-sunset-200/80 border-t border-white/20 pt-0.5">${escapeHtml(r.signature || '')}</div>
+                </div>
+                ${canJudge || canDelete ? `<div class="flex flex-wrap gap-2 justify-end">
+                    ${canJudge ? `<button type="button" onclick="setHqReportStatus('${escapeHtml(r.id)}', 'accepted')" class="dc-btn"><span>Принять</span></button>
+                    <button type="button" onclick="setHqReportStatus('${escapeHtml(r.id)}', 'rejected')" class="dc-btn"><span>Отклонить</span></button>` : ''}
+                    ${canDelete ? `<button type="button" onclick="deleteHqReport('${escapeHtml(r.id)}')" class="dc-btn danger"><span>Удалить</span></button>` : ''}
+                </div>` : ''}`;
+            showRepModal('reportViewModal');
+        }
+
+        async function setHqReportStatus(id, status) {
+            try {
+                const res = await eowApi('/api/reports/hq/' + encodeURIComponent(id), { method: 'POST', body: JSON.stringify({ status }) });
+                const i = cmdReports.hq.findIndex(x => x.id === id);
+                if (i >= 0 && res.report) cmdReports.hq[i] = res.report;
+                renderCommanderReports();
+                openHqReportView(id);
+                showToast(status === 'accepted' ? 'Рапорт принят' : 'Рапорт отклонён');
+            } catch (err) { showToast(unitReportErr(err.message, 'Не удалось изменить статус')); }
+        }
+
+        async function deleteHqReport(id) {
+            if (!isCurrentUserHardcodedOwner()) return;
+            if (!confirm('Удалить рапорт в штаб? Это действие нельзя отменить.')) return;
+            try {
+                await eowApi('/api/reports/hq/' + encodeURIComponent(id), { method: 'POST', body: JSON.stringify({ delete: true }) });
+                cmdReports.hq = cmdReports.hq.filter(x => x.id !== id);
+                closeReportView();
+                renderCommanderReports();
+                showToast('Рапорт удалён');
+            } catch (err) { showToast(unitReportErr(err.message, 'Не удалось удалить рапорт')); }
         }
 
         function convertHtmlToDiscordMarkdown(html) {
@@ -7383,11 +7604,6 @@
                 canWrite: () => isCurrentUserSiteCommander(),
                 render: () => { if (isCmdWindowOpen()) renderCommanderFactionManagement(); },
             },
-            reports: {
-                get: () => commanderReportsStore, set: v => { if (Array.isArray(v)) commanderReportsStore = v; },
-                canWrite: () => isCurrentUserSiteCommander(),
-                render: () => renderCommanderReports(),
-            },
             addons: {
                 get: () => addonsRegistry, set: v => { if (Array.isArray(v)) addonsRegistry = v; },
                 canWrite: () => isCurrentUserSiteAdmin(),
@@ -7619,7 +7835,7 @@
             // мягкая смена содержимого в панелях, которые перерисовываются
             const SWAP_IDS = ['cmdDocsWorkspaceCol', 'cmdOrdersWorkspaceCol', 'cmdSelectedFactionDashboard', 'privilegesPlayerInspector', 'eventFactionDetailBox',
                 'adminCalendarGrid', 'cmdTrainingCalendarGrid', 'existingBookingsForDay', 'cmdExistingBookingsForDay', 'rulesChaptersAccordionList',
-                'publicNewsFeedGrid', 'publicDocsGrid', 'ownerNewsManageList', 'adminAddonsListContainer', 'cmdReportsListContainer', 'adminRewardsPurchaseLog',
+                'publicNewsFeedGrid', 'publicDocsGrid', 'ownerNewsManageList', 'adminAddonsListContainer', 'cmdReportsGroups', 'adminRewardsPurchaseLog',
                 'eventFactionsCardsCol', 'cmdFactionSelectorCards', 'privilegesPlayersListContainer'];
             const lastSwap = new WeakMap();
             const swapObserver = new MutationObserver(muts => {
@@ -8218,6 +8434,7 @@
         }
 
         async function loadDiscordPanel() {
+            loadDiscordChannels();
             if (!isCurrentUserHardcodedOwner()) return;
             discordState.loading = true; discordState.error = '';
             renderDiscordPanel();
@@ -8458,6 +8675,9 @@
             webhook_gone: 'Вебхук Discord удалён — сообщите Овнеру',
             rate_limited: 'Discord просит подождать — попробуйте через минуту',
             discord_rejected: 'Discord не принял рапорт',
+            reports_thread_missing: 'Канал рапортов в Discord подключён неправильно — сообщите Овнеру (режим администратора → «Анонс» → «Каналы приказов и рапортов»)',
+            forbidden: 'Нет доступа',
+            bad_category: 'Выберите категорию',
             discord_unavailable: 'Discord сейчас недоступен, попробуйте позже',
         };
         const unitReportErr = (code, fallback) => UNIT_REPORT_ERRORS[code] || fallback;
@@ -8633,7 +8853,7 @@
 
         async function openReportView(id) {
             if (!EOW_AUTH.user) return;
-            const r = Object.values(unitReportsByUnit).flat().find(x => x.id === id);
+            const r = Object.values(unitReportsByUnit).flat().find(x => x.id === id) || cmdReports.reports.find(x => x.id === id);
             const card = document.getElementById('reportViewCard');
             if (!r || !card) return;
             const c = unitReportCat(r.category), a = unitReportAddr(r.addressee);
@@ -9029,6 +9249,167 @@
                 if (e.status !== 404) gameSync.forUser = null;   // 404 — старая версия сервера: остаёмся на демо
             }
             applyGameCharacters();
+        }
+
+        // ===================== ОНЛАЙН СЕРВЕРА В ШАПКЕ =====================
+        // GMod-сервер сам присылает онлайн на сервер сайта; пустой сервер «спит», тогда онлайн 0.
+        async function loadServerOnline() {
+            const el = document.getElementById('headerOnlineCount');
+            if (!el || !EOW_AUTH_API) return;
+            try {
+                const res = await fetch(EOW_AUTH_API.replace(/\/+$/, '') + '/api/game/status', { cache: 'no-store' });
+                if (!res.ok) return;
+                const d = await res.json();
+                const online = Math.max(0, d.online | 0), max = (d.max | 0) || 64;
+                el.innerHTML = `${online}<span class="opacity-70"> / </span>${max}`;
+                const link = el.closest('a');
+                if (link) link.title = online ? `Сейчас на сервере ${online} из ${max} — подключиться` : 'Сервер пуст — заходи первым';
+                const dot = document.getElementById('headerOnlineDot');
+                if (dot) dot.style.opacity = online ? '' : '0.45';
+            } catch (e) { /* сервер сайта недоступен — оставляем как есть */ }
+        }
+        loadServerOnline();
+        setInterval(() => { if (!document.hidden) loadServerOnline(); }, 60000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) loadServerOnline(); });
+
+        // ===================== КАНАЛЫ DISCORD: ПРИКАЗЫ И РАПОРТА (Овнер) =====================
+        // Подписанный на сайте приказ уходит в канал приказов с упоминанием роли; рапорта игроков — в ветки канала рапортов.
+        const dcChannels = { state: null, loading: false, error: '', busy: '' };
+        const DC_CHAN_ERRORS = {
+            bad_webhook: 'Это не ссылка вебхука Discord',
+            webhook_invalid: 'Discord не узнал вебхук — возможно, его удалили',
+            rate_limited: 'Discord просит подождать минуту',
+            bad_role: 'ID роли — это число из 17–20 цифр',
+            not_configured: 'Сначала подключите вебхук',
+            forbidden: 'Только для Овнера',
+        };
+        async function loadDiscordChannels(force) {
+            const card = document.getElementById('discordChannelsCard');
+            if (!card) return;
+            if (!isCurrentUserHardcodedOwner()) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            if (dcChannels.loading || (dcChannels.state && !force)) { renderDiscordChannels(); return; }
+            dcChannels.loading = true;
+            renderDiscordChannels();
+            try { dcChannels.state = await eowApi('/api/discord/channels'); dcChannels.error = ''; }
+            catch (e) { dcChannels.error = e.message || 'network'; }
+            dcChannels.loading = false;
+            renderDiscordChannels();
+        }
+        function dcChanChip(ok, text) {
+            return `<span class="px-2.5 py-0.5 rounded-full border font-mono text-[10px] ${ok ? 'bg-emerald-500/15 border-emerald-400/35 text-emerald-300' : 'bg-amber-500/15 border-amber-400/35 text-amber-300'}">${escapeHtml(text)}</span>`;
+        }
+        function dcChanForm(kind, label, steps) {
+            return `
+                <div class="space-y-1.5">
+                    <label for="dcChanInput_${kind}" class="block text-[11px] font-mono text-sunset-300">${escapeHtml(label)}</label>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input id="dcChanInput_${kind}" type="url" autocomplete="off" spellcheck="false" placeholder="https://discord.com/api/webhooks/…" class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-dusk-900 border border-white/15 text-xs text-white">
+                        <button type="button" onclick="connectDiscordChannel('${kind}')" class="dc-btn primary" ${dcChannels.busy ? 'disabled' : ''}><span>${dcChannels.busy === kind ? 'Проверка…' : 'Подключить'}</span></button>
+                    </div>
+                    <ol class="text-[11px] text-sunset-200/60 leading-relaxed list-decimal pl-4">${steps.map(t => `<li>${t}</li>`).join('')}</ol>
+                </div>`;
+        }
+        function renderDiscordChannels() {
+            const o = document.getElementById('dcChanOrders'), r = document.getElementById('dcChanReports');
+            if (!o || !r) return;
+            const st = dcChannels.state;
+            if (!st) {
+                const msg = dcChannels.loading ? 'Загрузка…' : (dcChannels.error ? 'Не удалось загрузить: ' + (DC_CHAN_ERRORS[dcChannels.error] || dcChannels.error) : '');
+                o.innerHTML = `<div class="text-xs text-sunset-200/70">${escapeHtml(msg)}</div>`;
+                r.innerHTML = '';
+                return;
+            }
+            // --- приказы
+            const od = st.orders || {};
+            o.innerHTML = `
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="font-display font-bold text-white text-sm">Канал приказов</div>
+                        <div class="text-[11px] text-sunset-200/65">Подписанный приказ из «Документация и приказы» публикуется сюда с упоминанием роли. Правка приказа обновляет сообщение, удаление — удаляет.</div>
+                    </div>
+                    ${dcChanChip(!!od.configured, od.configured ? 'Подключён' : 'Не подключён')}
+                </div>
+                ${od.configured ? `
+                <div class="text-[11px] font-mono text-sunset-200/70">Канал ${escapeHtml(od.channelId)} · вебхук «${escapeHtml(od.name || '')}»</div>
+                <div class="flex flex-wrap items-end gap-2">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="dcOrdersRole" class="block text-[11px] font-mono text-sunset-300 mb-1">ID роли для упоминания (пусто — без упоминания)</label>
+                        <input id="dcOrdersRole" type="text" inputmode="numeric" autocomplete="off" value="${escapeHtml(od.roleId || '')}" class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-900 border border-white/15 text-xs text-white">
+                    </div>
+                    <button type="button" onclick="saveOrdersRole()" class="dc-btn"><span>Сохранить роль</span></button>
+                    <button type="button" onclick="testDiscordChannel('orders')" class="dc-btn"><span>Проверить</span></button>
+                    <button type="button" onclick="disconnectDiscordChannel('orders')" class="dc-btn danger"><span>Отключить</span></button>
+                </div>` : dcChanForm('orders', 'Ссылка вебхука канала приказов', [
+                    `В Discord откройте канал приказов (ID <span class="font-mono">${escapeHtml(st.ordersChannelId)}</span>) → «Настроить канал» → «Интеграция» → «Вебхуки» → «Новый вебхук».`,
+                    '«Копировать URL вебхука» и вставьте сюда. Сайт проверит, что вебхук именно из канала приказов.',
+                    `Упоминаться будет роль <span class="font-mono">${escapeHtml(st.ordersRoleId)}</span> — её можно поменять после подключения.`,
+                ])}`;
+            // --- рапорта
+            const rd = st.reports || {};
+            const missing = Array.isArray(rd.missingThreads) ? rd.missingThreads : [];
+            const total = st.reportThreads | 0;
+            const okRep = rd.configured && !rd.broken && !missing.length;
+            let status = 'Не подключён';
+            if (rd.configured && rd.broken) status = 'Вебхук не работает';
+            else if (rd.configured && missing.length === total && total) status = 'Не тот канал';
+            else if (rd.configured && missing.length) status = `Нет ${missing.length} из ${total} веток`;
+            else if (rd.configured) status = 'Подключён';
+            const problem = rd.configured && (rd.broken || missing.length);
+            r.innerHTML = `
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="font-display font-bold text-white text-sm">Канал рапортов</div>
+                        <div class="text-[11px] text-sunset-200/65">Рапорта игроков уходят в ветки этого канала по категориям: ${total} ${ruPlural(total, 'ветка', 'ветки', 'веток')}.</div>
+                    </div>
+                    ${dcChanChip(okRep, status)}
+                </div>
+                ${rd.configured ? `<div class="text-[11px] font-mono text-sunset-200/70">${rd.channelId ? 'Канал ' + escapeHtml(rd.channelId) : ''}${rd.name ? ' · вебхук «' + escapeHtml(rd.name) + '»' : ''}${rd.source === 'worker' ? ' · из настроек воркера' : ''}</div>` : ''}
+                ${problem ? `<div class="p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-[11.5px] text-amber-200 leading-relaxed">${rd.broken
+                    ? 'Discord не узнаёт этот вебхук — подключите новый.'
+                    : missing.length === total
+                        ? 'Вебхук создан не в том канале: в нём нет ни одной ветки рапортов, поэтому Discord отклоняет рапорта. Создайте вебхук в канале, где лежат ветки «' + escapeHtml(missing.slice(0, 3).join('», «')) + '»…, и подключите его ниже.'
+                        : 'В канале нет веток: «' + escapeHtml(missing.join('», «')) + '». Рапорта этих категорий не дойдут.'}</div>` : ''}
+                ${rd.configured && rd.source === 'site' ? `<div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="testDiscordChannel('reports')" class="dc-btn"><span>Проверить</span></button>
+                    <button type="button" onclick="disconnectDiscordChannel('reports')" class="dc-btn danger"><span>Отключить</span></button>
+                </div>` : ''}
+                ${!rd.configured || rd.source !== 'site' || problem ? dcChanForm('reports', 'Ссылка вебхука канала рапортов', [
+                    'В Discord откройте канал, в котором лежат ветки рапортов («Пост/патруль», «Разведка», «Лекция» и др.) → «Настроить канал» → «Интеграция» → «Вебхуки» → «Новый вебхук».',
+                    '«Копировать URL вебхука» и вставьте сюда. Сайт проверит, что ветки рапортов в этом канале есть.',
+                ]) : ''}`;
+        }
+        async function connectDiscordChannel(kind) {
+            const inp = document.getElementById('dcChanInput_' + kind);
+            const url = inp ? inp.value.trim() : '';
+            if (!url) { showToast('Вставьте ссылку вебхука'); return; }
+            dcChannels.busy = kind; renderDiscordChannels();
+            try {
+                dcChannels.state = await eowApi('/api/discord/channels/' + kind, { method: 'POST', body: JSON.stringify({ webhookUrl: url }) });
+                showToast(kind === 'orders' ? 'Канал приказов подключён' : 'Канал рапортов подключён');
+            } catch (e) {
+                let msg = DC_CHAN_ERRORS[e.message] || 'Не удалось подключить';
+                if (e.message === 'wrong_channel') msg = 'Этот вебхук из другого канала. Нужен вебхук канала приказов ' + ((dcChannels.state && dcChannels.state.ordersChannelId) || '');
+                if (e.message === 'threads_missing') msg = 'В канале этого вебхука нет веток рапортов — создайте вебхук в канале с ветками';
+                showToast(msg);
+            }
+            dcChannels.busy = ''; renderDiscordChannels();
+        }
+        async function disconnectDiscordChannel(kind) {
+            if (!confirm(kind === 'orders' ? 'Отключить канал приказов? Новые приказы перестанут уходить в Discord.' : 'Отключить канал рапортов, подключённый на сайте?')) return;
+            try { dcChannels.state = await eowApi('/api/discord/channels/' + kind, { method: 'POST', body: JSON.stringify({ webhookUrl: '' }) }); showToast('Отключено'); }
+            catch (e) { showToast(DC_CHAN_ERRORS[e.message] || 'Не удалось отключить'); }
+            renderDiscordChannels();
+        }
+        async function saveOrdersRole() {
+            const v = ((document.getElementById('dcOrdersRole') || {}).value || '').trim();
+            try { dcChannels.state = await eowApi('/api/discord/channels/orders', { method: 'POST', body: JSON.stringify({ roleId: v }) }); showToast(v ? 'Роль сохранена' : 'Приказы будут без упоминания'); }
+            catch (e) { showToast(DC_CHAN_ERRORS[e.message] || 'Не удалось сохранить роль'); }
+            renderDiscordChannels();
+        }
+        async function testDiscordChannel(kind) {
+            try { await eowApi('/api/discord/channels/' + kind + '/test', { method: 'POST', body: '{}' }); showToast('Проверочное сообщение отправлено'); }
+            catch (e) { showToast(unitReportErr(e.message, DC_CHAN_ERRORS[e.message] || 'Discord не принял сообщение')); }
         }
 
         // ===================== ЗАГРУЗКА КАРТИНОК НА СЕРВЕР САЙТА =====================

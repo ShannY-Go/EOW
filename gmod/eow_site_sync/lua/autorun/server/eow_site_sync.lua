@@ -18,6 +18,7 @@
       - раз в час — все персонажи (уходят только изменившиеся аккаунты);
       - каждые 5 минут — игроки онлайн с живыми значениями текущего персонажа;
       - при входе и выходе игрока.
+    Онлайн сервера для шапки сайта — при входе/выходе и раз в 2 минуты, пока на сервере есть игроки.
 
     Ключ:
       Берётся из уже настроенного аддона логов (lua/autorun/server/eow_site_logs.lua), отдельно задавать
@@ -37,6 +38,8 @@ EOW_SITE = EOW_SITE or {}
 local S = EOW_SITE
 
 S.API             = "https://eow-auth.shanny-games-yt.workers.dev/api/game/sync"
+S.STATUS_API      = "https://eow-auth.shanny-games-yt.workers.dev/api/game/status"
+S.STATUS_INTERVAL = 120      -- онлайн для шапки сайта, сек (сайт считает данные старше 5 минут нулём)
 S.ONLINE_INTERVAL = 300      -- игроки онлайн, сек
 S.FULL_INTERVAL   = 3600     -- вся база, сек (уходят только изменившиеся аккаунты)
 S.FORCE_EVERY     = 86400    -- раз в сутки отправить всё заново, даже без изменений
@@ -466,6 +469,26 @@ local function syncSids(sids, cb) if #sids > 0 then sync(sids, false, cb) end en
 
 S.SyncFull, S.SyncPlayers = syncFull, syncPlayers
 
+-- ---------------------------------------------------------------- онлайн для шапки сайта
+local lastStatus, lastStatusAt = -1, 0
+local function sendStatus(online, force)
+    local key = getKey()
+    if key == "" then return end
+    online = math.max(0, math.floor(online or #player.GetHumans()))
+    -- без изменений шлём не чаще раза в STATUS_INTERVAL (сайту нужен «пульс», чтобы не обнулить онлайн)
+    if not force and online == lastStatus and os.time() - lastStatusAt < S.STATUS_INTERVAL - 5 then return end
+    lastStatus, lastStatusAt = online, os.time()
+    HTTP({
+        url = S.STATUS_API, method = "POST", type = "application/json",
+        headers = { Authorization = "Bearer " .. key },
+        body = util.TableToJSON({ online = online, max = game.MaxPlayers(), map = game.GetMap() }),
+        timeout = 15,
+        success = function(code) if code ~= 200 then log("status", code) lastStatusAt = 0 end end,
+        failed = function(err) log("status failed", err) lastStatusAt = 0 end,
+    })
+end
+S.SendStatus = sendStatus
+
 -- ---------------------------------------------------------------- события
 local started = false
 local function start()
@@ -477,11 +500,16 @@ hook.Add("DatabaseInitialized", "EOWSite.Sync.Start", start)
 timer.Simple(150, start)       -- если база подключилась раньше загрузки аддона
 
 hook.Add("PlayerInitialSpawn", "EOWSite.Sync.Join", function(ply)
+    if not ply:IsBot() then sendStatus(#player.GetHumans(), true) end
     timer.Simple(45, function() if IsValid(ply) then syncPlayers({ ply }) end end)
 end)
 hook.Add("PlayerDisconnected", "EOWSite.Sync.Leave", function(ply)
     local sid = ply:SteamID()
     if not sid or ply:IsBot() then return end
+    -- сразу: уходящий игрок ещё в списке, пустой сервер потом «засыпает» и таймеры встают
+    local left = 0
+    for _, p in ipairs(player.GetHumans()) do if p ~= ply then left = left + 1 end end
+    sendStatus(left, true)
     -- даём геймоду сохранить прогресс и кредиты, потом читаем из базы
     timer.Simple(8, function() syncSids({ sid }) end)
 end)
@@ -493,6 +521,8 @@ timer.Create("EOWSite.Sync.Online", S.ONLINE_INTERVAL, 0, function()
     end
 end)
 timer.Create("EOWSite.Sync.Full", S.FULL_INTERVAL, 0, function() syncFull(false) end)
+timer.Create("EOWSite.Status", 30, 0, function() sendStatus(#player.GetHumans(), false) end)
+hook.Add("InitPostEntity", "EOWSite.Status.Start", function() timer.Simple(10, function() sendStatus(#player.GetHumans(), true) end) end)
 
 -- ---------------------------------------------------------------- консоль
 local function allowed(ply) return not IsValid(ply) or ply:IsSuperAdmin() end
@@ -522,4 +552,4 @@ concommand.Add("eow_site_sync_status", function(ply)
         st.lastErr ~= "" and (st.lastErr .. " (" .. ago(st.lastErrAt) .. ")") or "нет"))
 end)
 
-say("Синхронизация с сайтом загружена (v2)")
+say("Синхронизация с сайтом загружена (v3)")

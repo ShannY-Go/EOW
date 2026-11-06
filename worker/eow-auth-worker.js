@@ -28,6 +28,17 @@
  *   GET  /media/<id>                   → картинка по постоянной ссылке
  *   POST /api/game/sync                → данные персонажей с GMod-сервера (по ключу GAME_SYNC_KEY)
  *   GET  /api/me/game                  → свои персонажи и баланс доната
+ *   POST /api/game/status              → онлайн сервера с GMod-сервера (по ключу GAME_SYNC_KEY)
+ *   GET  /api/game/status              → онлайн сервера для шапки сайта (публично)
+ *   GET  /api/discord/channels         → каналы приказов и рапортов (только Овнер)
+ *   POST /api/discord/channels/<orders|reports>       → подключить / отключить вебхук канала (только Овнер)
+ *   POST /api/discord/channels/<orders|reports>/test  → проверочное сообщение (только Овнер)
+ *   GET  /api/reports/all              → рапорта всех подразделений и рапорта в штаб (командиры, администрация)
+ *   POST /api/reports/hq               → рапорт в штаб: только в базу сайта, без Discord (командиры, администрация)
+ *   POST /api/reports/hq/<id>          → статус рапорта в штаб (администрация) или удаление (Овнер)
+ *
+ * Приказы: когда в разделе «Документация и приказы» подписывают новый приказ, воркер публикует его
+ * в канал приказов Discord с упоминанием роли; правка приказа обновляет сообщение, удаление — удаляет.
  *
  * Настройка (Cloudflare → Workers):
  *   1) Привязка D1-базы с именем переменной  DB
@@ -36,7 +47,8 @@
  *   4) секрет  LOGS_INGEST_KEY  — тот же ключ, что в аддоне eow_site_logs.lua на игровом сервере
  *   5) (необязательно) секрет  DISCORD_WEBHOOK_URL — вебхук канала по умолчанию; проще подключить
  *      его на сайте: режим администратора → «Анонс» → «Подключение к Discord»
- *   6) секрет  REPORTS_WEBHOOK_URL — вебхук канала рапортов (ветки рапортов должны быть в этом канале)
+ *   6) (необязательно) REPORTS_WEBHOOK_URL — вебхук канала рапортов (ветки рапортов должны быть в этом канале);
+ *      проще подключить на сайте: режим администратора → «Анонс» → «Каналы приказов и рапортов»
  *   7) (необязательно) секрет  GAME_SYNC_KEY — ключ аддона eow_site_sync на GMod-сервере; если не задан, берётся LOGS_INGEST_KEY
  */
 
@@ -164,6 +176,30 @@ async function ensureSchema(db) {
     )`).run();
     await db.prepare('CREATE INDEX IF NOT EXISTS unit_reports_unit ON unit_reports (unit, created_at)').run();
     await db.prepare('CREATE INDEX IF NOT EXISTS unit_reports_author ON unit_reports (author_id, created_at)').run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS hq_reports (
+        id TEXT PRIMARY KEY,
+        category TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        signature TEXT NOT NULL DEFAULT '',
+        unit TEXT NOT NULL DEFAULT '',
+        unit_title TEXT NOT NULL DEFAULT '',
+        author_id TEXT NOT NULL,
+        author_name TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'new',
+        status_by TEXT NOT NULL DEFAULT '',
+        status_at INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+    )`).run();
+    await db.prepare('CREATE INDEX IF NOT EXISTS hq_reports_time ON hq_reports (created_at)').run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS discord_order_msgs (
+        order_id TEXT PRIMARY KEY,
+        message_id TEXT NOT NULL,
+        channel_id TEXT NOT NULL DEFAULT '',
+        hash TEXT NOT NULL DEFAULT '',
+        posted_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )`).run();
     await db.prepare(`CREATE TABLE IF NOT EXISTS media (
         id TEXT PRIMARY KEY,
         mime TEXT NOT NULL,
@@ -646,7 +682,7 @@ async function handleGetContent(request, env) {
     return json(request, { content });
 }
 
-async function handleSaveContent(request, env, key) {
+async function handleSaveContent(request, env, key, ctx) {
     const def = CONTENT_KEYS[key];
     if (!def) return json(request, { error: 'unknown_key' }, 404);
     const row = await authUser(request, env);
@@ -683,6 +719,11 @@ async function handleSaveContent(request, env, key) {
     ).bind(key, text, version, now(), r.id, curVersion).run();
     if (res && res.meta && res.meta.changes === 0) {
         return json(request, { error: 'conflict', value: contentView(key, curValue, r), version: curVersion }, 409);
+    }
+    if (key === 'docs') {
+        // новые и изменённые подписанные приказы → канал приказов Discord (в фоне, сохранение не ждёт)
+        const job = syncOrdersToDiscord(env, curValue, next).catch(e => console.error('orders->discord', e && e.message));
+        if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
     }
     return json(request, { value: contentView(key, next, r), version });
 }
@@ -1156,7 +1197,8 @@ const REPORT_MAX_TOTAL_BYTES = 9.5 * 1024 * 1024;      // лимит вложе�
 const REPORT_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 const REPORT_RATE = 5;                                  // рапортов от одного игрока за 10 минут
 
-function reportsWebhook(env) { return parseWebhook(env.REPORTS_WEBHOOK_URL || ''); }
+// вебхук рапортов: подключённый на сайте (Овнер → «Каналы приказов и рапортов»), иначе — переменная воркера REPORTS_WEBHOOK_URL
+async function reportsWebhook(env) { return (await channelHook(env, 'discord_reports')) || parseWebhook(env.REPORTS_WEBHOOK_URL || ''); }
 
 // Какие подразделения видит игрок. null — любые (штаб сайта или игрок ещё не привязан к составу корпуса).
 async function reportUnitsFor(env, row) {
@@ -1207,7 +1249,7 @@ function reportFiles(form) {
 async function handleReportCreate(request, env) {
     const row = await authUser(request, env);
     if (!row) return json(request, { error: 'unauthorized' }, 401);
-    const hook = reportsWebhook(env);
+    const hook = await reportsWebhook(env);
     if (!hook) return json(request, { error: 'reports_not_configured' }, 503);
     if (Number(request.headers.get('Content-Length') || 0) > REPORT_MAX_TOTAL_BYTES + 200000) return json(request, { error: 'too_large' }, 413);
 
@@ -1290,7 +1332,12 @@ async function handleReportCreate(request, env) {
     let r = await send(cat[1], '');
     // если канал вебхука — форум, для «Другое» создаём отдельную ветку
     if (!r.ok && !cat[1] && r.data && r.data.code === 220001) r = await send('', `${cat[0]} · ${subject}`);
-    if (!r.ok) { const e = discordError(r); return json(request, e, e.status); }
+    if (!r.ok) {
+        console.error('report->discord', cat[0], r.status, JSON.stringify(r.data || {}).slice(0, 300));
+        // 10003: ветки категории нет в канале вебхука — вебхук создан не в том канале
+        if (r.data && r.data.code === 10003) return json(request, { error: 'reports_thread_missing', category: cat[0] }, 400);
+        const e = discordError(r); return json(request, e, e.status);
+    }
     const msg = r.data || {};
 
     await env.DB.prepare(`INSERT INTO unit_reports (id, unit, unit_title, category, addressee, subject, body, signature, char_name,
@@ -1309,7 +1356,7 @@ async function handleReportAttachments(request, env, id) {
     if (!rep) return json(request, { error: 'not_found' }, 404);
     const allowed = await reportUnitsFor(env, row);
     if (allowed && !allowed.includes(rep.unit)) return json(request, { error: 'unit_forbidden' }, 403);
-    const hook = reportsWebhook(env);
+    const hook = await reportsWebhook(env);
     if (!hook || !rep.message_id) return json(request, { photos: [], signature: '' });
     const r = await discordFetch(hook, `/messages/${rep.message_id}` + (rep.thread_id ? '?thread_id=' + rep.thread_id : ''));
     if (!r.ok) { const e = discordError(r); return json(request, e, e.status); }
@@ -1319,6 +1366,329 @@ async function handleReportAttachments(request, env, id) {
         photos: atts.filter(a => a !== sig).map(a => ({ url: a.url, name: a.filename })),
         signature: sig ? sig.url : '',
     });
+}
+
+// =================================================================== РАПОРТА ДЛЯ КОМАНДИРОВ И РАПОРТ В ШТАБ
+// Командиры и администрация видят рапорта всех подразделений (сайт группирует их по подразделению).
+// Рапорт в штаб пишут командиры: он хранится только в базе сайта и в Discord не уходит.
+const HQ_CATEGORIES = {
+    combat:     'Боевой рапорт после операции',
+    training:   'Отчёт о проведении тренировки',
+    discipline: 'Дисциплинарное взыскание / Трибунал',
+    supply:     'Запрос на снабжение / Повышение',
+    other:      'Другое',
+};
+const HQ_STATUSES = { new: 'На рассмотрении Штаба', accepted: 'Принят Штабом', rejected: 'Отклонён Штабом' };
+const HQ_RATE = 10;                                     // рапортов в штаб от одного человека за 10 минут
+
+function staffOf(row) { const r = rolesOf(row); return r.owner || r.admin || r.commander ? r : null; }
+
+// HTML рапорта из редактора сайта: без скриптов, стилей, фреймов, обработчиков и javascript:-ссылок
+function cleanRichHtml(html, max) {
+    let s = String(html || '').slice(0, max * 2);
+    s = s.replace(/<\s*(script|style|iframe|object|embed|link|meta|base|form|svg|math|template)\b[\s\S]*?(<\s*\/\s*\1\s*>|$)/gi, '')
+        .replace(/<\s*\/?\s*(script|style|iframe|object|embed|link|meta|base|form|svg|math|template)\b[^>]*>/gi, '')
+        .replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+        .replace(/\s(href|src|action|formaction|xlink:href)\s*=\s*("|')?\s*(javascript|vbscript|data)\s*:[^"'\s>]*\2?/gi, ' $1="#"')
+        .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
+    return s.slice(0, max);
+}
+
+function hqView(x) {
+    return {
+        id: x.id, category: x.category, categoryTitle: HQ_CATEGORIES[x.category] || x.category, subject: x.subject, body: x.body,
+        signature: x.signature, unit: x.unit, unitTitle: x.unit_title, authorSteamId: x.author_id, author: x.author_name,
+        status: x.status, statusTitle: HQ_STATUSES[x.status] || x.status, statusBy: x.status_by || '', statusAt: x.status_at || 0,
+        time: new Date(x.created_at * 1000).toISOString(),
+    };
+}
+
+async function handleReportsAll(request, env) {
+    const row = await authUser(request, env);
+    if (!row) return json(request, { error: 'unauthorized' }, 401);
+    if (!staffOf(row)) return json(request, { error: 'forbidden' }, 403);
+    const u = await env.DB.prepare('SELECT * FROM unit_reports ORDER BY created_at DESC LIMIT 400').all();
+    const h = await env.DB.prepare('SELECT * FROM hq_reports ORDER BY created_at DESC LIMIT 200').all();
+    return json(request, { reports: ((u && u.results) || []).map(reportView), hq: ((h && h.results) || []).map(hqView) });
+}
+
+async function handleHqCreate(request, env) {
+    const row = await authUser(request, env);
+    if (!row) return json(request, { error: 'unauthorized' }, 401);
+    const r = staffOf(row);
+    if (!r) return json(request, { error: 'forbidden' }, 403);
+    let p; try { p = await request.json(); } catch (e) { return json(request, { error: 'bad_json' }, 400); }
+    if (!isObj(p)) return json(request, { error: 'bad_json' }, 400);
+    if (!HQ_CATEGORIES[p.category]) return json(request, { error: 'bad_category' }, 400);
+    const subject = cleanText(p.subject, 200);
+    const body = cleanRichHtml(p.body, 20000);
+    const signature = cleanText(p.signature, 80);
+    const unitTitle = cleanText(p.unitTitle, 80);
+    if (!subject || !body.replace(/<[^>]*>/g, '').trim()) return json(request, { error: 'empty_fields' }, 400);
+    if (!signature) return json(request, { error: 'no_signature' }, 400);
+    const t = now();
+    const rate = await env.DB.prepare('SELECT COUNT(*) AS n FROM hq_reports WHERE author_id = ? AND created_at > ?').bind(row.steamid, t - 600).first();
+    if (rate && rate.n >= HQ_RATE) return json(request, { error: 'too_many' }, 429);
+    const id = 'hq_' + t.toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 10);
+    await env.DB.prepare(`INSERT INTO hq_reports (id, category, subject, body, signature, unit, unit_title, author_id, author_name, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, p.category, subject, body, signature, String(r.corps || ''), unitTitle,
+        row.steamid, row.name || '', t).run();
+    const saved = await env.DB.prepare('SELECT * FROM hq_reports WHERE id = ?').bind(id).first();
+    return json(request, { ok: true, report: hqView(saved) });
+}
+
+async function handleHqUpdate(request, env, id) {
+    const row = await authUser(request, env);
+    if (!row) return json(request, { error: 'unauthorized' }, 401);
+    const r = rolesOf(row);
+    let p; try { p = await request.json(); } catch (e) { return json(request, { error: 'bad_json' }, 400); }
+    if (!isObj(p)) return json(request, { error: 'bad_json' }, 400);
+    const rep = await env.DB.prepare('SELECT id FROM hq_reports WHERE id = ?').bind(id).first();
+    if (!rep) return json(request, { error: 'not_found' }, 404);
+    if (p.delete === true) {
+        if (!r.owner) return json(request, { error: 'forbidden' }, 403);
+        await env.DB.prepare('DELETE FROM hq_reports WHERE id = ?').bind(id).run();
+        return json(request, { ok: true, deleted: id });
+    }
+    if (!(r.owner || r.admin)) return json(request, { error: 'forbidden' }, 403);
+    if (!HQ_STATUSES[p.status]) return json(request, { error: 'bad_status' }, 400);
+    await env.DB.prepare('UPDATE hq_reports SET status = ?, status_by = ?, status_at = ? WHERE id = ?')
+        .bind(p.status, cleanName(row.name || '') || row.steamid, now(), id).run();
+    return json(request, { ok: true, report: hqView(await env.DB.prepare('SELECT * FROM hq_reports WHERE id = ?').bind(id).first()) });
+}
+
+// =================================================================== КАНАЛЫ DISCORD: ПРИКАЗЫ И РАПОРТА
+// Вебхуки подключает Овнер на сайте (режим администратора → «Анонс» → «Каналы приказов и рапортов»).
+// Ссылки хранятся только здесь, в D1, и на сайт не отдаются.
+const ORDERS_CHANNEL_ID = '1568227381909524560';        // канал приказов
+const ORDERS_ROLE_ID = '1559347815879278660';           // кого упоминать при новом приказе
+const ORDER_COLOR = 0xc62828;
+const CHANNEL_KEYS = { orders: 'discord_orders', reports: 'discord_reports' };
+
+async function channelHook(env, key) {
+    const c = await getSetting(env, key);
+    return c && c.id && c.token ? c : null;
+}
+
+// какие ветки категорий рапортов недоступны из канала вебхука (10003 — ветки в этом канале нет)
+async function probeReportThreads(hook) {
+    const missing = [];
+    for (const [title, tid] of Object.values(REPORT_CATEGORIES)) {
+        if (!tid) continue;
+        const r = await discordFetch(hook, `/messages/${tid}?thread_id=${tid}`);
+        if (!r.ok && r.data && r.data.code === 10003) missing.push(title);
+    }
+    return missing;
+}
+const REPORT_THREADS_TOTAL = Object.values(REPORT_CATEGORIES).filter(c => c[1]).length;
+
+async function channelsState(env) {
+    const orders = await channelHook(env, CHANNEL_KEYS.orders);
+    const repSite = await channelHook(env, CHANNEL_KEYS.reports);
+    let reports = { configured: false };
+    if (repSite) {
+        reports = { configured: true, source: 'site', channelId: repSite.channelId || '', name: repSite.name || '', missingThreads: repSite.missingThreads || [] };
+    } else {
+        const w = parseWebhook(env.REPORTS_WEBHOOK_URL || '');
+        if (w) {
+            const r = await discordFetch(w, '');
+            reports = r.ok
+                ? { configured: true, source: 'worker', channelId: String(r.data.channel_id || ''), name: cleanName(r.data.name || ''), missingThreads: await probeReportThreads(w) }
+                : { configured: true, source: 'worker', broken: true, missingThreads: [] };
+        }
+    }
+    return {
+        orders: orders
+            ? { configured: true, channelId: orders.channelId || '', name: orders.name || '', roleId: orders.roleId == null ? ORDERS_ROLE_ID : orders.roleId }
+            : { configured: false },
+        ordersChannelId: ORDERS_CHANNEL_ID, ordersRoleId: ORDERS_ROLE_ID,
+        reports, reportThreads: REPORT_THREADS_TOTAL,
+    };
+}
+
+async function handleChannelsGet(request, env) {
+    const { res } = await ownerOnly(request, env);
+    if (res) return res;
+    return json(request, await channelsState(env));
+}
+
+async function handleChannelSave(request, env, kind) {
+    const { row, res } = await ownerOnly(request, env);
+    if (res) return res;
+    let body; try { body = await request.json(); } catch (e) { return json(request, { error: 'bad_json' }, 400); }
+    if (!isObj(body)) return json(request, { error: 'bad_json' }, 400);
+    const key = CHANNEL_KEYS[kind];
+    if (body.webhookUrl !== undefined) {
+        const raw = String(body.webhookUrl || '').trim();
+        if (!raw) {
+            await env.DB.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
+        } else {
+            const w = parseWebhook(raw);
+            if (!w) return json(request, { error: 'bad_webhook' }, 400);
+            const r = await discordFetch(w, '');
+            if (!r.ok) return json(request, { error: r.status === 429 ? 'rate_limited' : 'webhook_invalid' }, 400);
+            const channelId = String(r.data.channel_id || '');
+            if (kind === 'orders' && channelId !== ORDERS_CHANNEL_ID) return json(request, { error: 'wrong_channel', channelId, expected: ORDERS_CHANNEL_ID }, 400);
+            const prev = (await getSetting(env, key)) || {};
+            const cfg = { id: w.id, token: w.token, channelId, guildId: String(r.data.guild_id || ''), name: cut(cleanName(r.data.name || ''), 64) };
+            if (kind === 'orders') cfg.roleId = prev.roleId == null ? ORDERS_ROLE_ID : prev.roleId;
+            if (kind === 'reports') {
+                cfg.missingThreads = await probeReportThreads(w);
+                if (cfg.missingThreads.length === REPORT_THREADS_TOTAL) return json(request, { error: 'threads_missing', channelId }, 400);
+            }
+            await putSetting(env, key, cfg, row.steamid);
+        }
+    }
+    if (kind === 'orders' && body.roleId !== undefined) {
+        const rid = String(body.roleId || '').replace(/\D/g, '');
+        if (rid && !/^\d{15,22}$/.test(rid)) return json(request, { error: 'bad_role' }, 400);
+        const cfg = await getSetting(env, key);
+        if (cfg) { cfg.roleId = rid; await putSetting(env, key, cfg, row.steamid); }
+    }
+    return json(request, await channelsState(env));
+}
+
+async function handleChannelTest(request, env, kind) {
+    const { row, res } = await ownerOnly(request, env);
+    if (res) return res;
+    const hook = kind === 'orders' ? await channelHook(env, CHANNEL_KEYS.orders) : await reportsWebhook(env);
+    if (!hook) return json(request, { error: 'not_configured' }, 400);
+    const r = await discordFetch(hook, '?wait=true', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            username: kind === 'orders' ? 'EOW · Приказы' : 'EOW · Рапортация', allowed_mentions: { parse: [] },
+            embeds: [{ color: kind === 'orders' ? ORDER_COLOR : REPORT_COLOR, title: 'Канал подключён к сайту',
+                description: kind === 'orders' ? 'Сюда будут приходить приказы, подписанные на eclipseofwar.com.' : 'Сюда будут приходить рапорта игроков с eclipseofwar.com.',
+                footer: { text: `Проверка от ${cleanName(row.name || '') || 'Овнера'}` } }],
+        }),
+    });
+    if (!r.ok) { const e = discordError(r); return json(request, e, e.status); }
+    return json(request, { ok: true });
+}
+
+// ---- приказы → Discord ----
+function decodeEntities(s) {
+    return String(s || '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0*39;|&apos;/g, "'")
+        .replace(/&#(\d{1,6});/g, (_, n) => { const c = Number(n); return c > 31 && c < 0x110000 ? String.fromCodePoint(c) : ''; })
+        .replace(/&amp;/g, '&');
+}
+function htmlToDiscord(html) {
+    let s = String(html || '');
+    s = s.replace(/<\s*h[1-6][^>]*>([\s\S]*?)<\s*\/\s*h[1-6]\s*>/gi, (_, t) => `\n**${t.replace(/<[^>]+>/g, '').trim()}**\n`)
+        .replace(/<\s*(b|strong)\b[^>]*>([\s\S]*?)<\s*\/\s*\1\s*>/gi, '**$2**')
+        .replace(/<\s*(i|em)\b[^>]*>([\s\S]*?)<\s*\/\s*\1\s*>/gi, '*$2*')
+        .replace(/<\s*u\b[^>]*>([\s\S]*?)<\s*\/\s*u\s*>/gi, '__$1__')
+        .replace(/<\s*(s|strike|del)\b[^>]*>([\s\S]*?)<\s*\/\s*\1\s*>/gi, '~~$2~~')
+        .replace(/<\s*a\b[^>]*href\s*=\s*"(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\s*\/\s*a\s*>/gi, '[$2]($1)')
+        .replace(/<\s*blockquote\b[^>]*>([\s\S]*?)<\s*\/\s*blockquote\s*>/gi, (_, t) => '\n> ' + t.replace(/<[^>]+>/g, ' ').trim() + '\n')
+        .replace(/<\s*li\b[^>]*>/gi, '\n• ')
+        .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+        .replace(/<\s*\/?\s*(p|div|ul|ol|li|section|article|table|tr)\b[^>]*>/gi, '\n')
+        .replace(/<[^>]+>/g, '');
+    return decodeEntities(s).replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+const isPublishedOrder = o => isObj(o) && o.kind === 'order' && typeof o.signatureDataUrl === 'string' && o.signatureDataUrl.startsWith('data:image/png;base64,');
+async function orderHash(o) {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([o.title, o.badge, o.summary, o.contentHtml, o.signedCaption, o.signatureDataUrl])));
+    return [...new Uint8Array(d)].slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function orderPayload(o, roleId, withPing) {
+    const title = decodeEntities(o.title || 'Приказ');
+    const summary = decodeEntities(o.summary || '').trim();
+    const desc = [summary ? `*${summary}*` : '', htmlToDiscord(o.contentHtml)].filter(Boolean).join('\n\n');
+    const payload = {
+        username: 'EOW · Приказы',
+        embeds: [{
+            color: ORDER_COLOR, title: cut(title, 256), url: 'https://eclipseofwar.com/#docs', description: cut(desc || title, 4000),
+            fields: [
+                { name: 'Вид', value: cut(decodeEntities(o.badge || 'Приказ'), 1024), inline: true },
+                { name: 'Подписал', value: cut(decodeEntities(o.signedCaption || '—'), 1024), inline: true },
+            ],
+            thumbnail: { url: 'attachment://signature.png' },
+            footer: { text: 'Eclipse of War · Приказы командования' },
+            timestamp: new Date().toISOString(),
+        }],
+        attachments: [{ id: 0, filename: 'signature.png' }],
+        allowed_mentions: withPing && roleId ? { roles: [roleId] } : { parse: [] },
+    };
+    if (withPing) payload.content = roleId ? `<@&${roleId}> Новый приказ` : 'Новый приказ';
+    return payload;
+}
+function signatureBlob(dataUrl) {
+    const bin = atob(String(dataUrl).slice(String(dataUrl).indexOf(',') + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: 'image/png' });
+}
+async function sendOrder(hook, path, method, o, roleId, withPing) {
+    const fd = new FormData();
+    fd.append('payload_json', JSON.stringify(orderPayload(o, roleId, withPing)));
+    fd.append('files[0]', signatureBlob(o.signatureDataUrl), 'signature.png');
+    return discordFetch(hook, path, { method, body: fd });
+}
+
+async function syncOrdersToDiscord(env, oldList, newList) {
+    const hook = await channelHook(env, CHANNEL_KEYS.orders);
+    if (!hook) return;
+    const roleId = hook.roleId == null ? ORDERS_ROLE_ID : hook.roleId;
+    const oldMap = new Map((Array.isArray(oldList) ? oldList : []).filter(isObj).map(o => [String(o.id), o]));
+    const nextList = (Array.isArray(newList) ? newList : []).filter(isObj);
+    const { results } = await env.DB.prepare('SELECT * FROM discord_order_msgs').all();
+    const posted = new Map((results || []).map(x => [x.order_id, x]));
+    const t = now();
+    let budget = 5;                                       // не больше 5 сообщений за одно сохранение
+    for (const o of nextList.filter(isPublishedOrder)) {
+        if (budget <= 0) break;
+        const id = String(o.id);
+        const h = await orderHash(o);
+        const prev = posted.get(id);
+        if (prev && prev.hash === h) continue;
+        const old = oldMap.get(id);
+        // публикуем только то, что подписали/изменили сейчас: старые приказы при подключении канала не рассылаются
+        if (old && isPublishedOrder(old) && (await orderHash(old)) === h) continue;
+        budget--;
+        let r = null;
+        if (prev) {
+            r = await sendOrder(hook, `/messages/${prev.message_id}`, 'PATCH', o, roleId, false);
+            if (r.ok) {
+                await env.DB.prepare('UPDATE discord_order_msgs SET hash = ?, updated_at = ? WHERE order_id = ?').bind(h, t, id).run();
+                continue;
+            }
+            if (r.status !== 404) { console.error('order edit', r.status, JSON.stringify(r.data || {}).slice(0, 200)); continue; }
+        }
+        r = await sendOrder(hook, '?wait=true', 'POST', o, roleId, true);   // новый приказ (или сообщение удалили в Discord)
+        if (!r.ok) { console.error('order post', r.status, JSON.stringify(r.data || {}).slice(0, 200)); continue; }
+        await env.DB.prepare(`INSERT INTO discord_order_msgs (order_id, message_id, channel_id, hash, posted_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(order_id) DO UPDATE SET message_id = excluded.message_id, channel_id = excluded.channel_id, hash = excluded.hash, updated_at = excluded.updated_at`)
+            .bind(id, String(r.data && r.data.id || ''), String(r.data && r.data.channel_id || ''), h, t, t).run();
+    }
+    // приказ удалён с сайта → удаляем сообщение
+    const alive = new Set(nextList.map(o => String(o.id)));
+    for (const [id, m] of posted) {
+        if (alive.has(id)) continue;
+        const r = await discordFetch(hook, `/messages/${m.message_id}`, { method: 'DELETE' });
+        if (r.ok || r.status === 404) await env.DB.prepare('DELETE FROM discord_order_msgs WHERE order_id = ?').bind(id).run();
+    }
+}
+
+// =================================================================== ОНЛАЙН СЕРВЕРА (шапка сайта)
+// GMod-сервер присылает онлайн при входе/выходе и раз в 2 минуты, пока на нём есть игроки.
+// Пустой сервер «засыпает» и ничего не шлёт, поэтому давние данные (> 5 минут) считаются нулём.
+const STATUS_FRESH = 300;
+async function handleGameStatusPost(request, env) {
+    const ok = gameKeyOk(request, env);
+    if (ok === null) return json(request, { error: 'sync_not_configured' }, 503);
+    if (!ok) return json(request, { error: 'bad_key' }, 401);
+    let b; try { b = await request.json(); } catch (e) { return json(request, { error: 'bad_json' }, 400); }
+    if (!isObj(b)) return json(request, { error: 'bad_json' }, 400);
+    const st = { online: gInt(b.online, 1000), max: gInt(b.max, 1000), map: gText(b.map, 48), t: now() };
+    await putSetting(env, 'game_status', st, 'gmod');
+    return json(request, { ok: true });
+}
+async function handleGameStatusGet(request, env) {
+    const st = (await getSetting(env, 'game_status')) || {};
+    const fresh = !!st.t && now() - st.t < STATUS_FRESH;
+    return json(request, { online: fresh ? st.online | 0 : 0, max: st.max | 0, map: st.map || '', updatedAt: st.t || 0, live: fresh });
 }
 
 // =================================================================== КАРТИНКИ САЙТА (вместо протухающих ссылок Discord)
@@ -1489,7 +1859,7 @@ async function handleMyGame(request, env) {
 }
 
 export default {
-    async fetch(request, env) {
+    async fetch(request, env, ctx) {
         const url = new URL(request.url);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request) });
 
@@ -1508,7 +1878,7 @@ export default {
             if (request.method === 'POST' && m) return handleUpdateUser(request, env, m[1]);
             if (request.method === 'GET' && p === '/api/content') return handleGetContent(request, env);
             const ck = p.match(/^\/api\/content\/([a-z]{1,20})$/);
-            if (request.method === 'POST' && ck) return handleSaveContent(request, env, ck[1]);
+            if (request.method === 'POST' && ck) return handleSaveContent(request, env, ck[1], ctx);
             if (request.method === 'POST' && p === '/api/shop/buy') return handleShopBuy(request, env);
             if (request.method === 'GET' && p === '/api/shop/purchases') return handleShopPurchases(request, env);
             if (request.method === 'POST' && p === '/api/logs/ingest') return handleLogsIngest(request, env);
@@ -1524,6 +1894,13 @@ export default {
             const dm = p.match(/^\/api\/discord\/posts\/(\d{1,9})\/delete$/);
             if (request.method === 'POST' && dm) return handleDiscordDelete(request, env, Number(dm[1]));
             if (request.method === 'GET' && p === '/api/reports') return handleReportsList(request, env, url);
+            if (request.method === 'GET' && p === '/api/reports/all') return handleReportsAll(request, env);
+            if (request.method === 'POST' && p === '/api/reports/hq') return handleHqCreate(request, env);
+            const hq = p.match(/^\/api\/reports\/hq\/(hq_[a-z0-9]{6,40})$/);
+            if (request.method === 'POST' && hq) return handleHqUpdate(request, env, hq[1]);
+            if (request.method === 'GET' && p === '/api/discord/channels') return handleChannelsGet(request, env);
+            const chm = p.match(/^\/api\/discord\/channels\/(orders|reports)(\/test)?$/);
+            if (request.method === 'POST' && chm) return chm[2] ? handleChannelTest(request, env, chm[1]) : handleChannelSave(request, env, chm[1]);
             if (request.method === 'POST' && p === '/api/reports') return handleReportCreate(request, env);
             const ra = p.match(/^\/api\/reports\/(rep_[a-z0-9]{6,40})\/attachments$/);
             if (request.method === 'GET' && ra) return handleReportAttachments(request, env, ra[1]);
@@ -1532,8 +1909,11 @@ export default {
             if (request.method === 'GET' && md) return handleMediaGet(request, env, md[1]);
             if (request.method === 'POST' && p === '/api/game/sync') return handleGameSync(request, env);
             if (request.method === 'GET' && p === '/api/me/game') return handleMyGame(request, env);
+            if (request.method === 'POST' && p === '/api/game/status') return handleGameStatusPost(request, env);
+            if (request.method === 'GET' && p === '/api/game/status') return handleGameStatusGet(request, env);
             return json(request, { error: 'not_found' }, 404);
         } catch (e) {
+            console.error('server_error', request.method, url.pathname, e && e.message);
             return json(request, { error: 'server_error' }, 500);
         }
     },
