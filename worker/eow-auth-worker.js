@@ -24,6 +24,10 @@
  *   GET  /api/reports?unit=<ключ>      → рапорта подразделения (вошедшие игроки этого подразделения)
  *   POST /api/reports                  → подать рапорт: уходит в Discord (ветка по категории) и сохраняется
  *   GET  /api/reports/<id>/attachments → свежие ссылки на скриншоты и подпись рапорта из Discord
+ *   POST /api/media                    → загрузить картинку (Овнер, администраторы, командиры)
+ *   GET  /media/<id>                   → картинка по постоянной ссылке
+ *   POST /api/game/sync                → данные персонажей с GMod-сервера (по ключу GAME_SYNC_KEY)
+ *   GET  /api/me/game                  → свои персонажи и баланс доната
  *
  * Настройка (Cloudflare → Workers):
  *   1) Привязка D1-базы с именем переменной  DB
@@ -33,6 +37,7 @@
  *   5) (необязательно) секрет  DISCORD_WEBHOOK_URL — вебхук канала по умолчанию; проще подключить
  *      его на сайте: режим администратора → «Анонс» → «Подключение к Discord»
  *   6) секрет  REPORTS_WEBHOOK_URL — вебхук канала рапортов (ветки рапортов должны быть в этом канале)
+ *   7) (необязательно) секрет  GAME_SYNC_KEY — ключ аддона eow_site_sync на GMod-сервере; если не задан, берётся LOGS_INGEST_KEY
  */
 
 // ===== НАСТРОЙКИ ==========================================================
@@ -159,6 +164,39 @@ async function ensureSchema(db) {
     )`).run();
     await db.prepare('CREATE INDEX IF NOT EXISTS unit_reports_unit ON unit_reports (unit, created_at)').run();
     await db.prepare('CREATE INDEX IF NOT EXISTS unit_reports_author ON unit_reports (author_id, created_at)').run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS media (
+        id TEXT PRIMARY KEY,
+        mime TEXT NOT NULL,
+        data BLOB NOT NULL,
+        size INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        created_by TEXT NOT NULL DEFAULT ''
+    )`).run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS game_characters (
+        steamid TEXT NOT NULL,
+        char_id TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        rank TEXT NOT NULL DEFAULT '',
+        unit TEXT NOT NULL DEFAULT '',
+        unit_title TEXT NOT NULL DEFAULT '',
+        profession TEXT NOT NULL DEFAULT '',
+        level INTEGER NOT NULL DEFAULT 0,
+        xp INTEGER NOT NULL DEFAULT 0,
+        credits INTEGER NOT NULL DEFAULT 0,
+        playtime INTEGER NOT NULL DEFAULT 0,
+        kills INTEGER NOT NULL DEFAULT 0,
+        deaths INTEGER NOT NULL DEFAULT 0,
+        reputation INTEGER NOT NULL DEFAULT 0,
+        reprimands INTEGER NOT NULL DEFAULT 0,
+        first_seen INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (steamid, char_id)
+    )`).run();
+    await db.prepare(`CREATE TABLE IF NOT EXISTS game_accounts (
+        steamid TEXT PRIMARY KEY,
+        donate INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL DEFAULT 0
+    )`).run();
     schemaReady = true;
 }
 
@@ -647,8 +685,9 @@ async function handleSaveContent(request, env, key) {
 
 // =================================================================== МАГАЗИН БАЛЛОВ АДМИНИСТРАТОРА
 const ADMIN_SHOP = {
-    prof_astro: ['Астромеханик', 700], prof_youngling: ['Юнлинг', 800], prof_padawan: ['Падаван', 1200],
-    prof_merc: ['Свободный наемник', 1400], prof_master: ['Мастер', 1700], prof_commando: ['Республиканский коммандос', 1700],
+    prof_astro: ['Астромеханик', 700], prof_youngling: ['Юнлинг', 2000], prof_padawan: ['Падаван', 3000],
+    prof_knight: ['Рыцарь-джедай', 4000], prof_master: ['Мастер-джедай', 6000],
+    prof_merc: ['Свободный наёмник', 2000], prof_commando: ['Республиканский коммандос', 10000],
     extra_personal: ['Личная профессия', 2600], extra_weapon: ['Вооружение в слот', 550],
     extra_model: ['Добавление модельки на сервер', 900], extra_hparmor: ['Усиление +10 HP / Armor', 320],
 };
@@ -1119,6 +1158,9 @@ function reportsWebhook(env) { return parseWebhook(env.REPORTS_WEBHOOK_URL || ''
 async function reportUnitsFor(env, row) {
     const r = rolesOf(row);
     if (r.owner || r.admin || r.commander) return null;
+    const g = await env.DB.prepare("SELECT DISTINCT unit FROM game_characters WHERE steamid = ? AND unit <> ''").bind(row.steamid).all();
+    const gameUnits = ((g && g.results) || []).map(x => x.unit);
+    if (gameUnits.length) return gameUnits;                 // данные с игрового сервера — главный источник
     const c = await env.DB.prepare("SELECT value FROM content WHERE key = 'rosters'").first();
     let rosters = null; try { rosters = c ? JSON.parse(c.value) : null; } catch (e) { rosters = null; }
     const units = [];
@@ -1186,6 +1228,10 @@ async function handleReportCreate(request, env) {
     const unitTitle = cleanText(p.unitTitle, 80) || unit;
     if (!subject || !text) return json(request, { error: 'empty_fields' }, 400);
     if (!signature) return json(request, { error: 'no_signature' }, 400);
+
+    const own = await env.DB.prepare('SELECT name FROM game_characters WHERE steamid = ? AND unit = ?').bind(row.steamid, unit).all();
+    const ownNames = ((own && own.results) || []).map(x => x.name);
+    if (ownNames.length && !ownNames.includes(charName)) return json(request, { error: 'bad_character' }, 400);
 
     const t = now();
     const rate = await env.DB.prepare('SELECT COUNT(*) AS n FROM unit_reports WHERE author_id = ? AND created_at > ?').bind(row.steamid, t - 600).first();
@@ -1271,6 +1317,129 @@ async function handleReportAttachments(request, env, id) {
     });
 }
 
+// =================================================================== КАРТИНКИ САЙТА (вместо протухающих ссылок Discord)
+// Овнер/администратор/командир загружает картинку → она хранится в D1 и отдаётся по постоянной ссылке /media/<id>.
+const MEDIA_MAX_BYTES = 1500000;
+const MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MEDIA_ID_RE = /^m_[a-z0-9]{8,40}$/;
+
+async function handleMediaUpload(request, env, url) {
+    const row = await authUser(request, env);
+    if (!row) return json(request, { error: 'unauthorized' }, 401);
+    const r = rolesOf(row);
+    if (!(r.owner || r.admin || r.commander)) return json(request, { error: 'forbidden' }, 403);
+    if (Number(request.headers.get('Content-Length') || 0) > MEDIA_MAX_BYTES + 100000) return json(request, { error: 'too_large' }, 413);
+    let form; try { form = await request.formData(); } catch (e) { return json(request, { error: 'bad_form' }, 400); }
+    const file = form.get('file');
+    if (!file || typeof file === 'string') return json(request, { error: 'no_file' }, 400);
+    if (!MEDIA_TYPES.includes(file.type)) return json(request, { error: 'bad_type' }, 400);
+    if (file.size > MEDIA_MAX_BYTES) return json(request, { error: 'too_large' }, 413);
+    const t = now();
+    const id = 'm_' + t.toString(36) + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    await env.DB.prepare('INSERT INTO media (id, mime, data, size, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(id, file.type, await file.arrayBuffer(), file.size, t, row.steamid).run();
+    return json(request, { ok: true, id, url: `${url.origin}/media/${id}` });
+}
+
+async function handleMediaGet(request, env, id) {
+    const m = await env.DB.prepare('SELECT mime, data FROM media WHERE id = ?').bind(id).first();
+    if (!m) return new Response('not found', { status: 404 });
+    const body = m.data instanceof ArrayBuffer ? m.data : new Uint8Array(m.data);
+    return new Response(body, { headers: {
+        'Content-Type': MEDIA_TYPES.includes(m.mime) ? m.mime : 'application/octet-stream',
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'X-Content-Type-Options': 'nosniff',
+        'Access-Control-Allow-Origin': '*',
+    } });
+}
+
+// =================================================================== СИНХРОНИЗАЦИЯ С ИГРОВЫМ СЕРВЕРОМ (GMod)
+// Игровой сервер сам отправляет данные персонажей (аддон eow_site_sync). Доступа к базе сервера снаружи нет.
+// Ключ — секрет GAME_SYNC_KEY (если не задан, используется LOGS_INGEST_KEY). Игрок на сайте видит только своих персонажей.
+const GAME_CHAR_ID_RE = /^[A-Za-z0-9_\-:.]{1,64}$/;
+const GAME_MAX_CHARS = 500;
+const gText = (v, n) => cleanName(String(v == null ? '' : v)).slice(0, n);
+const gInt = (v, max = 2e9) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(max, n)) : 0; };
+
+function gameKeyOk(request, env) {
+    const key = env.GAME_SYNC_KEY || env.LOGS_INGEST_KEY;
+    if (!key || String(key).length < 16) return null;
+    const h = request.headers.get('Authorization') || '';
+    return safeEqual(h.startsWith('Bearer ') ? h.slice(7) : '', key);
+}
+
+async function handleGameSync(request, env) {
+    const ok = gameKeyOk(request, env);
+    if (ok === null) return json(request, { error: 'sync_not_configured' }, 503);
+    if (!ok) return json(request, { error: 'bad_key' }, 401);
+    const raw = await request.text();
+    if (raw.length > 1500000) return json(request, { error: 'too_large' }, 413);
+    let body; try { body = JSON.parse(raw); } catch (e) { return json(request, { error: 'bad_json' }, 400); }
+    if (!isObj(body)) return json(request, { error: 'bad_json' }, 400);
+    const t = now();
+    const chars = (Array.isArray(body.characters) ? body.characters : []).slice(0, GAME_MAX_CHARS);
+    const accounts = (Array.isArray(body.accounts) ? body.accounts : []).slice(0, GAME_MAX_CHARS);
+    const replace = (Array.isArray(body.replace) ? body.replace : []).map(String).filter(s => /^7656119\d{10}$/.test(s)).slice(0, 200);
+
+    const rows = [];
+    let skipped = 0;
+    for (const c of chars) {
+        const sid = String(c && c.steamid || '');
+        const cid = String(c && c.id != null ? c.id : '');
+        if (!/^7656119\d{10}$/.test(sid) || !GAME_CHAR_ID_RE.test(cid)) { skipped++; continue; }
+        let unit = String(c.unit || '').trim().toLowerCase().slice(0, 64);
+        if (unit && !REPORT_UNIT_RE.test(unit)) unit = '';
+        rows.push([sid, cid, gText(c.name, 64) || 'Без имени', gText(c.rank, 48), unit, gText(c.unitTitle, 64), gText(c.profession, 64),
+            gInt(c.level, 100000), gInt(c.xp), gInt(c.credits), gInt(c.playtime), gInt(c.kills), gInt(c.deaths),
+            Math.max(-1e6, Math.min(1e6, Math.floor(Number(c.reputation) || 0))), gInt(c.reprimands, 100), gInt(c.joined) || t, t]);
+    }
+    const stmts = [];
+    // удаляем персонажей, которых больше нет у игрока (сервер прислал полный список по этим SteamID)
+    for (const sid of replace) {
+        const keep = rows.filter(r => r[0] === sid).map(r => r[1]);
+        stmts.push(env.DB.prepare('DELETE FROM game_characters WHERE steamid = ? AND char_id NOT IN (SELECT value FROM json_each(?))').bind(sid, JSON.stringify(keep)));
+    }
+    if (rows.length) {
+        stmts.push(env.DB.prepare(`INSERT INTO game_characters (steamid, char_id, name, rank, unit, unit_title, profession, level, xp, credits,
+                playtime, kills, deaths, reputation, reprimands, first_seen, updated_at)
+            SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]'), json_extract(value,'$[3]'), json_extract(value,'$[4]'),
+                json_extract(value,'$[5]'), json_extract(value,'$[6]'), json_extract(value,'$[7]'), json_extract(value,'$[8]'), json_extract(value,'$[9]'),
+                json_extract(value,'$[10]'), json_extract(value,'$[11]'), json_extract(value,'$[12]'), json_extract(value,'$[13]'), json_extract(value,'$[14]'),
+                json_extract(value,'$[15]'), json_extract(value,'$[16]') FROM json_each(?) WHERE true
+            ON CONFLICT(steamid, char_id) DO UPDATE SET name = excluded.name, rank = excluded.rank, unit = excluded.unit, unit_title = excluded.unit_title,
+                profession = excluded.profession, level = excluded.level, xp = excluded.xp, credits = excluded.credits, playtime = excluded.playtime,
+                kills = excluded.kills, deaths = excluded.deaths, reputation = excluded.reputation, reprimands = excluded.reprimands, updated_at = excluded.updated_at`)
+            .bind(JSON.stringify(rows)));
+    }
+    const accRows = accounts.filter(a => a && /^7656119\d{10}$/.test(String(a.steamid || ''))).map(a => [String(a.steamid), gInt(a.donate), t]);
+    if (accRows.length) {
+        stmts.push(env.DB.prepare(`INSERT INTO game_accounts (steamid, donate, updated_at)
+            SELECT json_extract(value,'$[0]'), json_extract(value,'$[1]'), json_extract(value,'$[2]') FROM json_each(?) WHERE true
+            ON CONFLICT(steamid) DO UPDATE SET donate = excluded.donate, updated_at = excluded.updated_at`).bind(JSON.stringify(accRows)));
+    }
+    if (stmts.length) await env.DB.batch(stmts);
+    return json(request, { ok: true, characters: rows.length, accounts: accRows.length, skipped });
+}
+
+function gameCharView(x) {
+    return {
+        id: x.char_id, name: x.name, rank: x.rank, unit: x.unit, unitTitle: x.unit_title, profession: x.profession,
+        level: x.level, xp: x.xp, credits: x.credits, playtime: x.playtime, kills: x.kills, deaths: x.deaths,
+        reputation: x.reputation, reprimands: x.reprimands, joined: x.first_seen, updatedAt: x.updated_at,
+    };
+}
+
+async function handleMyGame(request, env) {
+    const row = await authUser(request, env);
+    if (!row) return json(request, { error: 'unauthorized' }, 401);
+    const { results } = await env.DB.prepare('SELECT * FROM game_characters WHERE steamid = ? ORDER BY updated_at DESC LIMIT 20').bind(row.steamid).all();
+    const acc = await env.DB.prepare('SELECT donate, updated_at FROM game_accounts WHERE steamid = ?').bind(row.steamid).first();
+    return json(request, {
+        characters: (results || []).map(gameCharView),
+        account: acc ? { donateBalance: acc.donate | 0, updatedAt: acc.updated_at } : null,
+    });
+}
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -1310,6 +1479,11 @@ export default {
             if (request.method === 'POST' && p === '/api/reports') return handleReportCreate(request, env);
             const ra = p.match(/^\/api\/reports\/(rep_[a-z0-9]{6,40})\/attachments$/);
             if (request.method === 'GET' && ra) return handleReportAttachments(request, env, ra[1]);
+            if (request.method === 'POST' && p === '/api/media') return handleMediaUpload(request, env, url);
+            const md = p.match(/^\/media\/(m_[a-z0-9]{8,40})$/);
+            if (request.method === 'GET' && md) return handleMediaGet(request, env, md[1]);
+            if (request.method === 'POST' && p === '/api/game/sync') return handleGameSync(request, env);
+            if (request.method === 'GET' && p === '/api/me/game') return handleMyGame(request, env);
             return json(request, { error: 'not_found' }, 404);
         } catch (e) {
             return json(request, { error: 'server_error' }, 500);

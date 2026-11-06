@@ -375,6 +375,47 @@
         @media (prefers-reduced-motion: reduce) {
             .rep-lock-card, #reportComposeModal.flex > div, #reportViewModal.flex > div { animation: none; }
         }
+
+        /* ---------- Выпадающие списки (единый стиль) ---------- */
+        select:not([multiple]):not([size]) {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffad7a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right .8rem center; background-size: 12px;
+            padding-right: 2.25rem !important; cursor: pointer;
+            transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+        }
+        select:not([multiple]):not([size]):hover { border-color: rgba(255, 133, 89, .45); }
+        select:not([multiple]):not([size]):focus-visible { outline: none; border-color: rgba(255, 133, 89, .75); box-shadow: 0 0 0 3px rgba(255, 133, 89, .16); }
+        select.eow-sel-open { border-color: rgba(255, 133, 89, .8) !important; box-shadow: 0 0 0 3px rgba(255, 133, 89, .16);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E"); }
+        select option { background: #160307; color: #ffe7d6; }
+        .eow-sel-pop {
+            position: fixed; z-index: 9999; min-width: 160px; max-height: min(320px, 60vh); overflow-y: auto; overscroll-behavior: contain;
+            padding: 6px; border-radius: 16px; background: rgba(18, 4, 8, .97); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 133, 89, .28); box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .9), 0 0 0 1px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .05);
+            font-size: 13px; color: #ffe7d6; transform-origin: top center; animation: eowSelIn .18s var(--eow-ease) both;
+            scrollbar-width: thin; scrollbar-color: rgba(255, 133, 89, .4) transparent;
+        }
+        .eow-sel-pop.up { transform-origin: bottom center; }
+        @keyframes eowSelIn { from { opacity: 0; transform: translateY(-6px) scale(.97); } to { opacity: 1; transform: none; } }
+        .eow-sel-pop.up { animation-name: eowSelInUp; }
+        @keyframes eowSelInUp { from { opacity: 0; transform: translateY(6px) scale(.97); } to { opacity: 1; transform: none; } }
+        .eow-sel-opt { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; cursor: pointer; line-height: 1.3; user-select: none; }
+        .eow-sel-opt::before { content: ''; width: 6px; height: 6px; border-radius: 999px; flex: none; background: transparent; transition: background .15s; }
+        .eow-sel-opt.hl { background: rgba(255, 133, 89, .14); color: #fff; }
+        .eow-sel-opt.sel { color: #fff; font-weight: 600; background: linear-gradient(90deg, rgba(224, 53, 67, .35), rgba(255, 98, 66, .15)); }
+        .eow-sel-opt.sel::before { background: #ff8559; box-shadow: 0 0 8px rgba(255, 133, 89, .9); }
+        .eow-sel-opt.dis { opacity: .4; cursor: not-allowed; }
+        .eow-sel-group { padding: 8px 12px 4px; font: 600 10px/1.2 'JetBrains Mono', monospace; letter-spacing: .08em; text-transform: uppercase; color: #ff8559; }
+        @media (prefers-reduced-motion: reduce) { .eow-sel-pop { animation: none; } }
+
+        /* ---------- Прокручиваемые панели вкладок (админ / командир) ---------- */
+        .eow-tabs-scroll { overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: rgba(255, 133, 89, .55) rgba(255, 255, 255, .05); padding-bottom: 6px !important; border-radius: 1.1rem !important; }
+        .eow-tabs-scroll::-webkit-scrollbar { height: 6px; }
+        .eow-tabs-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, .05); border-radius: 999px; margin: 0 14px; }
+        .eow-tabs-scroll::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #e03543, #ff8559); border-radius: 999px; }
+        .eow-tabs-scroll::-webkit-scrollbar-thumb:hover { background: #ff8559; }
+
         body.modal-open { overflow: hidden; }
 
         /* ---------- Богатый текст ---------- */
@@ -988,7 +1029,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 <!-- Колонка документов (сдвигается влево при выборе) -->
                 <div id="rulesDocsCol" class="lg:col-span-12 transition-all duration-500">
-                    <div id="rulesDocsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div id="rulesDocsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                         <div id="rulesDocCard_project" onclick="selectRulesDocument('project')" class="rules-doc-card soft-card rounded-3xl p-6 sm:p-7 cursor-pointer group flex flex-col justify-between space-y-6">
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between gap-2">
@@ -1018,6 +1059,22 @@
                             <div class="flex items-center justify-between pt-3 border-t border-white/10 text-xs text-sunset-300 font-medium">
                                 <span>4 главы · Регламент состава</span>
                                 <span class="flex items-center gap-1 group-hover:translate-x-1 transition-transform">Открыть главы <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-right" aria-hidden="true" class="lucide lucide-arrow-right w-4 h-4"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></span>
+                            </div>
+                        </div>
+
+                        <div id="rulesDocCard_donate" onclick="selectRulesDocument('donate')" class="rules-doc-card soft-card rounded-3xl p-6 sm:p-7 cursor-pointer group flex flex-col justify-between space-y-6">
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                                        <i data-lucide="gem" class="w-5 h-5"></i>
+                                    </div>
+                                </div>
+                                <h3 class="font-display font-bold text-xl text-white">Правила доната</h3>
+                                <p class="text-xs sm:text-sm text-sunset-200/75 leading-relaxed">Условия предоставления донатных возможностей и индивидуальных услуг, права донат-менеджера и администрации.</p>
+                            </div>
+                            <div class="flex items-center justify-between pt-3 border-t border-white/10 text-xs text-sunset-300 font-medium">
+                                <span>1 глава · 6 пунктов</span>
+                                <span class="flex items-center gap-1 group-hover:translate-x-1 transition-transform">Открыть главы <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></span>
                             </div>
                         </div>
                     </div>
@@ -1890,125 +1947,108 @@
 
         <!-- 7. ДОНАТ (ПОЛНЫЙ СПИСОК ПРОФЕССИЙ, ДОПОЛНИТЕЛЬНО И ПРАВИЛА ДОНАТА) -->
         <section id="tab-donate" class="view-section space-y-8">
-            <div class="soft-glass rounded-3xl p-6 sm:p-8">
-                <h2 class="font-display font-bold text-2xl sm:text-3xl text-white mt-1">Донат и привилегии</h2>
-            </div>
-
-            <!-- Профессии -->
-            <div class="space-y-4">
-                <div class="flex items-center gap-3 px-2">
-                    <h3 class="font-display font-bold text-xl text-white">Профессии</h3>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-sunset-300 font-medium">Специализация</span>
-                            <h4 class="font-display font-bold text-lg text-white">Астромеханик</h4>
-                            <div class="font-display font-bold text-xl text-sunset-300">350 рублей</div>
+            <!-- Шапка: валюта проекта -->
+            <div class="soft-glass rounded-3xl p-6 sm:p-8 border border-sunset-400/25 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-sunset-500/15 blur-3xl pointer-events-none"></div>
+                <div class="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-6 items-center">
+                    <div class="space-y-3 min-w-0">
+                        <span class="text-[11px] font-mono uppercase tracking-wider text-sunset-400">Валюта проекта</span>
+                        <h2 class="font-display font-bold text-2xl sm:text-3xl text-white">Донат</h2>
+                        <p class="text-sm text-sunset-200/80 leading-relaxed max-w-2xl">Донат хранится на аккаунте и общий для всех ваших персонажей. За донат открываются профессии, кейсы с оружием и бонусами и индивидуальные услуги.</p>
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            <span class="px-3 py-1.5 rounded-xl bg-sunset-500/15 border border-sunset-400/30 text-sunset-200 text-xs font-mono">1 ₽ = 1 донат</span>
+                            <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-sunset-200/85 text-xs">Общий для всех персонажей</span>
+                            <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-sunset-200/85 text-xs">Индивидуальные услуги — через донат-менеджера</span>
                         </div>
-                        <button onclick="openModal('Покупка: Астромеханик (350 рублей)', 'Для приобретения профессии Астромеханика свяжитесь с донат-менеджером в Discord проекта.')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
                     </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-sunset-300 font-medium">Орден Джедаев</span>
-                            <h4 class="font-display font-bold text-lg text-white">Юнлинг</h4>
-                            <div class="font-display font-bold text-xl text-sunset-300">400 рублей</div>
+                    <div class="flex flex-col gap-2.5 lg:min-w-[260px]">
+                        <div id="donateBalanceCard" class="hidden p-4 rounded-2xl bg-dusk-950/80 border border-emerald-400/30">
+                            <div class="text-[11px] font-mono text-emerald-300/80">Ваш баланс</div>
+                            <div class="font-display font-bold text-2xl text-white"><span id="donateBalanceValue">0</span> <span class="text-sm text-sunset-300">донат</span></div>
                         </div>
-                        <button onclick="openModal('Покупка: Юнлинг (400 рублей)', 'Для приобретения профессии Юнлинга свяжитесь с донат-менеджером в Discord проекта.')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
-                    </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-sunset-300 font-medium">Орден Джедаев</span>
-                            <h4 class="font-display font-bold text-lg text-white">Падаван</h4>
-                            <div class="font-display font-bold text-xl text-sunset-300">600 рублей</div>
-                        </div>
-                        <button onclick="openModal('Покупка: Падаван (600 рублей)', 'Для приобретения профессии Падавана свяжитесь с донат-менеджером в Discord проекта.')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
-                    </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-sunset-500/15 border border-sunset-400/25 text-[11px] text-sunset-300 font-medium">Контрактник</span>
-                            <h4 class="font-display font-bold text-lg text-white">Свободный наемник</h4>
-                            <div class="font-display font-bold text-xl text-sunset-300">700 рублей</div>
-                        </div>
-                        <button onclick="openModal('Покупка: Свободный наемник (700 рублей)', 'Для приобретения профессии Свободного наемника свяжитесь с донат-менеджером в Discord проекта.')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
-                    </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-sunset-500/20 text-[11px] text-sunset-300 font-medium">Орден Джедаев</span>
-                            <h4 class="font-display font-bold text-lg text-white">Мастер</h4>
-                            <div class="font-display font-bold text-xl text-sunset-300">850 рублей</div>
-                        </div>
-                        <button onclick="openModal('Покупка: Мастер (850 рублей)', 'Для приобретения профессии Мастера свяжитесь с донат-менеджером в Discord проекта.')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
-                    </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-sunset-500/20 text-[11px] text-sunset-300 font-medium">Спецназ ВАР</span>
-                            <h4 class="font-display font-bold text-lg text-white">Республиканский коммандос</h4>
-                            <div class="font-display font-bold text-xl text-sunset-300">850 рублей</div>
-                        </div>
-                        <button onclick="openModal('Покупка: Республиканский коммандос (850 рублей)', 'Для приобретения профессии Республиканского коммандос свяжитесь с донат-менеджером в Discord проекта.')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
-                    </div>
-                </div>
-
-                <!-- Личная профессия -->
-                <div class="soft-glass rounded-3xl p-6 sm:p-7 border border-sunset-400/35 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div class="space-y-1">
-                        <span class="px-3 py-1 rounded-full bg-sunset-500/20 text-sunset-300 text-[11px] font-mono">ИНДИВИДУАЛЬНЫЙ СЛОТ</span>
-                        <h4 class="font-display font-bold text-xl text-white pt-1">Личная профессия</h4>
-                        <p class="text-xs sm:text-sm text-sunset-200/80">Обсуждается напрямую с донат менеджером.</p>
-                    </div>
-                    <a href="https://discord.gg/uHCFprBT8b" target="_blank" rel="noopener noreferrer" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 text-white font-medium text-xs whitespace-nowrap text-center">Связаться с донат менеджером</a>
-                </div>
-            </div>
-
-            <!-- Дополнительно -->
-            <div class="space-y-4">
-                <div class="flex items-center gap-3 px-2">
-                    <h3 class="font-display font-bold text-xl text-white">Дополнительно</h3>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">БЕЗ ЛИЧНОЙ ПРОФЕССИИ</span>
-                            <h4 class="font-display font-bold text-lg text-white">Вооружение</h4>
-                            <p class="text-xs text-sunset-200/80 leading-relaxed">Обсуждается напрямую с донат менеджером. Различное оружие — разная стоимость. Для вооружения НЕ требуется личная профессия.</p>
-                        </div>
-                        <a href="https://discord.gg/uHCFprBT8b" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs text-center">Обсудить в Discord</a>
-                    </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono">БЕЗ ЛИЧНОЙ ПРОФЕССИИ</span>
-                            <h4 class="font-display font-bold text-lg text-white">Добавление модельки на сервер</h4>
-                            <p class="text-xs text-sunset-200/80 leading-relaxed">Обсуждается напрямую с донат менеджером. Стоимость определяется в зависимости от веса модельки. Для ее добавления НЕ требуется личная профессия.</p>
-                        </div>
-                        <a href="https://discord.gg/uHCFprBT8b" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs text-center">Обсудить в Discord</a>
-                    </div>
-                    <div class="soft-card rounded-3xl p-6 flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <span class="px-3 py-1 rounded-full bg-rosewood-500/25 text-rosewood-300 text-[10px] font-mono">ТРЕБУЕТСЯ ЛИЧНАЯ ПРОФЕССИЯ</span>
-                            <h4 class="font-display font-bold text-lg text-white">HP / Armor</h4>
-                            <p class="text-xs text-sunset-200/80 leading-relaxed">Обсуждается напрямую с донат менеджером. Стоимость определяется на каждые +10 очков, также есть лимит. Для покупки требуется личная профессия.</p>
-                        </div>
-                        <a href="https://discord.gg/uHCFprBT8b" target="_blank" rel="noopener noreferrer" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs text-center">Обсудить в Discord</a>
+                        <a href="https://discord.gg/uHCFprBT8b" target="_blank" rel="noopener noreferrer" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 hover:opacity-90 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i><span>Написать донат-менеджеру</span>
+                        </a>
+                        <span class="text-[11px] text-center font-mono text-sunset-200/60">Донат-менеджер: @ОС | Tenkara</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Правила доната -->
-            <div class="soft-glass rounded-3xl p-6 sm:p-8 border border-rosewood-400/30 space-y-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-rosewood-500/20 border border-rosewood-400/30 flex items-center justify-center text-rosewood-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="alert-triangle" aria-hidden="true" class="lucide lucide-alert-triangle w-5 h-5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
-                    </div>
-                    <h3 class="font-display font-bold text-xl text-white">Правила доната</h3>
+            <!-- Быстрая навигация -->
+            <nav class="flex flex-wrap gap-2 px-1">
+                <a href="#donate-professions" onclick="event.preventDefault(); document.getElementById('donate-professions').scrollIntoView({ behavior: 'smooth', block: 'start' })" class="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-sunset-200"><span class="font-mono text-sunset-400">01</span> Профессии</a>
+                <a href="#donate-cases" onclick="event.preventDefault(); document.getElementById('donate-cases').scrollIntoView({ behavior: 'smooth', block: 'start' })" class="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-sunset-200"><span class="font-mono text-sunset-400">02</span> Кейсы</a>
+                <a href="#donate-services" onclick="event.preventDefault(); document.getElementById('donate-services').scrollIntoView({ behavior: 'smooth', block: 'start' })" class="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-sunset-200"><span class="font-mono text-sunset-400">03</span> Дополнительные услуги</a>
+                <button type="button" onclick="openDonateRules()" class="px-3.5 py-2 rounded-xl bg-rosewood-500/15 hover:bg-rosewood-500/25 border border-rosewood-400/30 text-xs text-rosewood-300"><span class="font-mono">04</span> Правила доната →</button>
+            </nav>
+
+            <!-- 01 / Профессии -->
+            <div id="donate-professions" class="space-y-4 scroll-mt-28">
+                <div class="px-2 space-y-1">
+                    <div class="flex items-baseline gap-3"><span class="font-mono text-sm text-sunset-400">01 /</span><h3 class="font-display font-bold text-xl text-white">Профессии</h3></div>
+                    <p class="text-xs text-sunset-200/70">Новые профессии и игровые направления. Каждая профессия приходит со своей веткой навыков.</p>
                 </div>
-                <ul class="space-y-2.5 text-xs sm:text-sm text-sunset-200/85 leading-relaxed">
-                    <li class="flex items-start gap-2.5"><span class="text-sunset-400 font-bold">—</span><span>За многочисленные жалобы и нарушения с предоставлением доказательств — высшая администрация вправе отменить услугу, а средства, потраченные на нее — не возвращаются.</span></li>
-                    <li class="flex items-start gap-2.5"><span class="text-sunset-400 font-bold">—</span><span>Если пользователь не удовлетворен покупкой, он может запросить изменения или же запросить возврат средств.</span></li>
-                    <li class="flex items-start gap-2.5"><span class="text-sunset-400 font-bold">—</span><span>При отсутствии многого времени без предупреждения и нормальной причины — высшая администрация может снять купленный донат.</span></li>
-                    <li class="flex items-start gap-2.5"><span class="text-sunset-400 font-bold">—</span><span>Донат менеджер может отказать в предоставлении той или иной услуги на свое усмотрение.</span></li>
-                </ul>
+                <div id="donateProfessionsGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"></div>
+                <div class="soft-card rounded-3xl p-6 sm:p-7 border border-sunset-400/35 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                    <div class="space-y-2 min-w-0">
+                        <span class="px-3 py-1 rounded-full bg-sunset-500/20 border border-sunset-400/30 text-[11px] text-sunset-300 font-mono">ИНДИВИДУАЛЬНО</span>
+                        <h4 class="font-display font-bold text-xl text-white">Личная профессия — <span class="text-sunset-300">от 1 000 ₽</span></h4>
+                        <p class="text-xs sm:text-sm text-sunset-200/80 leading-relaxed">Своё название, концепция, модель, вооружение и специализация. Итоговая стоимость определяется индивидуально.</p>
+                    </div>
+                    <button type="button" onclick="openDonateBuy('Личная профессия', 'от 1 000 ₽')" class="shrink-0 px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Обсудить с менеджером</button>
+                </div>
             </div>
+
+            <!-- 02 / Кейсы -->
+            <div id="donate-cases" class="space-y-4 scroll-mt-28">
+                <div class="px-2 space-y-1">
+                    <div class="flex items-baseline gap-3"><span class="font-mono text-sm text-sunset-400">02 /</span><h3 class="font-display font-bold text-xl text-white">Кейсы</h3></div>
+                    <p class="text-xs text-sunset-200/70">Покупаются в игре командой <span class="px-1.5 py-0.5 rounded-md bg-white/10 font-mono text-sunset-200">!магазин</span>. Всё выпавшее попадает на склад аккаунта — заберите награду на любого своего персонажа.</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                    <div class="lg:col-span-2 soft-card rounded-3xl p-6 border border-sunset-400/35 space-y-4 flex flex-col">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <span class="px-3 py-1 rounded-full bg-sunset-500/20 border border-sunset-400/30 text-[11px] text-sunset-300 font-mono">БОНУСЫ</span>
+                                <h4 class="font-display font-bold text-lg text-white mt-2">Донат-кейс</h4>
+                            </div>
+                            <div class="font-display font-bold text-2xl text-sunset-300 whitespace-nowrap">500 ₽</div>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[11px]">3-й слот персонажа (навсегда)</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-sunset-200/85 text-[11px]">Кредиты</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-sunset-200/85 text-[11px]">Опыт</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-sunset-200/85 text-[11px]">x2 опыта и x2 кредитов на время</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-sunset-200/85 text-[11px]">Ключи от других кейсов</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-sunset-200/85 text-[11px]">Возврат доната</span>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4" id="donateWeaponCasesGrid"></div>
+                </div>
+                <p class="px-2 text-[11px] text-sunset-200/60">Шансы выпадения и редкость видны в магазине при открытии кейса.</p>
+            </div>
+
+            <!-- 03 / Дополнительные услуги -->
+            <div id="donate-services" class="space-y-4 scroll-mt-28">
+                <div class="px-2 space-y-1">
+                    <div class="flex items-baseline gap-3"><span class="font-mono text-sm text-sunset-400">03 /</span><h3 class="font-display font-bold text-xl text-white">Дополнительные услуги</h3></div>
+                    <p class="text-xs text-sunset-200/70">Для покупки HP / Armor требуется личная профессия. Для персональной ветки, вооружения и моделей — не требуется.</p>
+                </div>
+                <div id="donateServicesGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+            </div>
+
+            <!-- Как приобрести -->
+            <div class="soft-glass rounded-3xl p-6 sm:p-8 border border-white/10 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-5 items-center">
+                <div class="space-y-2">
+                    <h3 class="font-display font-bold text-xl text-white">Как приобрести?</h3>
+                    <p class="text-xs sm:text-sm text-sunset-200/80 leading-relaxed">Напишите донат-менеджеру: он зачислит донат на ваш аккаунт или оформит услугу. Кейсы покупаются в игре за донат — <span class="px-1.5 py-0.5 rounded-md bg-white/10 font-mono text-sunset-200">!магазин</span>.</p>
+                    <p class="text-[11px] font-mono text-sunset-200/60">Донат-менеджер: @ОС | Tenkara · Перед покупкой ознакомьтесь с <button type="button" onclick="openDonateRules()" class="underline text-sunset-300 hover:text-white">правилами доната</button></p>
+                </div>
+                <a href="https://discord.gg/uHCFprBT8b" target="_blank" rel="noopener noreferrer" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rosewood-400 to-sunset-500 hover:opacity-90 text-white font-semibold text-sm flex items-center justify-center gap-2">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i><span>Discord проекта</span>
+                </a>
+            </div>
+            <div class="text-center font-display font-bold tracking-[0.25em] text-[11px] sm:text-xs text-sunset-200/45 uppercase">Eclipse of War • Your story. Your choice. Your war.</div>
         </section>
 
         <!-- 8. ПРОФИЛЬ -->
@@ -2232,7 +2272,7 @@
                 <button onclick="exitAdminBlock()" class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 text-xs font-semibold text-sunset-200 flex items-center gap-2 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-left" aria-hidden="true" class="lucide lucide-arrow-left w-4 h-4 text-sunset-400"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg> Вернуться на портал
                 </button>
-                <nav id="adminTopNav" class="min-w-0 flex items-center gap-1 overflow-x-auto no-scrollbar bg-dusk-950/60 p-1 rounded-full border border-white/10 font-display text-xs">
+                <nav id="adminTopNav" class="eow-tabs-scroll min-w-0 flex items-center gap-1 bg-dusk-950/60 p-1 border border-white/10 font-display text-xs">
                     <button onclick="switchAdminTab('events')" data-admin-tab="events" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Бронирование ивентов</button>
                     <button id="adminNavAnnounceBtn" onclick="switchAdminTab('announce')" data-admin-tab="announce" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Анонс</button>
                     <button onclick="switchAdminTab('addons')" data-admin-tab="addons" class="admin-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Аддоны и карты</button>
@@ -2680,8 +2720,12 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-sunset-200 mb-1">Главный баннер / обложка (URL или пусто)</label>
-                                    <input id="ownerNewsImageInput" type="url" placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
+                                    <label class="block text-xs text-sunset-200 mb-1">Главный баннер / обложка (файл, ссылка или пусто)</label>
+                                    <div class="flex gap-2">
+                                        <input id="ownerNewsImageInput" type="url" oninput="checkNewsCoverUrl(this)" placeholder="https://..." class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-dusk-950 border border-white/15 text-xs text-white">
+                                        <label class="shrink-0 px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs text-sunset-200 cursor-pointer flex items-center gap-1.5"><i data-lucide="upload" class="w-3.5 h-3.5"></i><span>Файл</span><input type="file" accept="image/*" class="hidden" onchange="uploadNewsCover(this)"></label>
+                                    </div>
+                                    <p id="ownerNewsImageStatus" class="text-[11px] mt-1 text-sunset-200/60"></p>
                                 </div>
                             </div>
                             <div class="space-y-2">
@@ -2867,7 +2911,7 @@
                 <button onclick="exitCommanderBlock()" class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/15 text-xs font-semibold text-sunset-200 flex items-center gap-2 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="arrow-left" aria-hidden="true" class="lucide lucide-arrow-left w-4 h-4 text-sunset-400"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg> Вернуться на портал
                 </button>
-                <nav class="min-w-0 flex items-center gap-1 overflow-x-auto no-scrollbar bg-dusk-950/60 p-1 rounded-full border border-white/10 font-display text-xs">
+                <nav class="eow-tabs-scroll min-w-0 flex items-center gap-1 bg-dusk-950/60 p-1 border border-white/10 font-display text-xs">
                     <button onclick="switchCommanderTab('docs')" data-cmd-tab="docs" class="cmd-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Редактор документов</button>
                     <button onclick="switchCommanderTab('orders')" data-cmd-tab="orders" class="cmd-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Приказы</button>
                     <button onclick="switchCommanderTab('faction')" data-cmd-tab="faction" class="cmd-nav-pill nav-pill px-3.5 py-1.5 font-medium text-sunset-200 whitespace-nowrap">Управление фракцией</button>
@@ -3604,6 +3648,24 @@
                     }
                 ]
             },
+            donate: {
+                title: "Правила доната",
+                sub: "Документ №03 · Донат и услуги",
+                chapters: [
+                    {
+                        code: "Глава I",
+                        title: "I. ПРАВИЛА ДОНАТА",
+                        items: [
+                            { num: "D.1", name: "Аннулирование услуги", text: "При многочисленных обоснованных жалобах и наличии доказательств высшая администрация вправе аннулировать приобретённую услугу." },
+                            { num: "D.2", name: "Длительное отсутствие", text: "При длительном отсутствии без предупреждения и уважительной причины администрация вправе пересмотреть предоставленные донатные возможности." },
+                            { num: "D.3", name: "Право на отказ", text: "Донат-менеджер вправе отказать в услуге, если её предоставление противоречит концепции проекта, балансу или техническим возможностям." },
+                            { num: "D.4", name: "Согласование услуг", text: "Все индивидуальные услуги предварительно согласовываются с донат-менеджером." },
+                            { num: "D.5", name: "Без иммунитета", text: "Донат не освобождает от соблюдения правил проекта и не предоставляет иммунитета от наказаний." },
+                            { num: "D.6", name: "Игровой баланс", text: "Администрация вправе корректировать характеристики приобретённых возможностей для сохранения игрового баланса." }
+                        ]
+                    }
+                ]
+            },
             admin: {
                 title: "Правила Администрации",
                 sub: "Документ №02 · Регламент состава",
@@ -3634,7 +3696,7 @@
 
             document.getElementById('rulesDocsCol').classList.remove('lg:col-span-12');
             document.getElementById('rulesDocsCol').classList.add('lg:col-span-4');
-            document.getElementById('rulesDocsGrid').classList.remove('md:grid-cols-2');
+            document.getElementById('rulesDocsGrid').classList.remove('md:grid-cols-2', 'xl:grid-cols-3');
             document.getElementById('rulesDocsGrid').classList.add('grid-cols-1');
 
             document.getElementById('rulesBackBtn').classList.remove('hidden');
@@ -3677,7 +3739,7 @@
         function closeRulesDocument() {
             document.getElementById('rulesDocsCol').classList.remove('lg:col-span-4');
             document.getElementById('rulesDocsCol').classList.add('lg:col-span-12');
-            document.getElementById('rulesDocsGrid').classList.add('md:grid-cols-2');
+            document.getElementById('rulesDocsGrid').classList.add('md:grid-cols-2', 'xl:grid-cols-3');
             document.getElementById('rulesChaptersDrawer').classList.add('hidden');
             document.getElementById('rulesBackBtn').classList.add('hidden');
         }
@@ -4494,6 +4556,7 @@
             syncAdminRoleUI();
             if (window.eowFitHeader) window.eowFitHeader();
             try { if (typeof renderUnitReportsTab === 'function') renderUnitReportsTab(); } catch (e) { /* ещё не инициализировано */ }
+            try { if (typeof loadGameData === 'function') loadGameData(); } catch (e) { /* ещё не инициализировано */ }
         }
 
         function syncAdminRoleUI() {
@@ -5131,7 +5194,7 @@
                 let q = 0.82, data = c.toDataURL('image/webp', q);
                 while (data.length > 450000 && q > 0.4) { q -= 0.12; data = c.toDataURL('image/webp', q); }
                 if (!data.startsWith('data:image/webp')) data = c.toDataURL('image/jpeg', 0.8);
-                insert(`<div><img src="${data}" alt="Встроенное изображение" class="max-h-96 rounded-2xl my-2"></div>`);
+                uploadSiteMediaFromDataUrl(data).then(url => insert(`<div><img src="${url || data}" alt="Встроенное изображение" class="max-h-96 rounded-2xl my-2"></div>`));
             };
             img.onerror = () => { URL.revokeObjectURL(url); showToast('Не удалось прочитать картинку'); };
             img.src = url;
@@ -5689,7 +5752,7 @@
                             <span class="text-[11px] font-mono text-sunset-200/60">${n.date}</span>
                         </div>
                         <h3 class="font-display font-bold ${idx === 0 ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} text-white">${n.title}</h3>
-                        ${n.image ? `<img src="${n.image}" alt="${n.title}" class="w-full h-52 object-cover rounded-2xl border border-white/10" onerror="this.onerror=null;this.style.display='none'">` : ''}
+                        ${/^(https:\/\/|data:image\/)/.test(n.image || '') ? `<img src="${n.image}" alt="${n.title}" class="w-full h-52 object-cover rounded-2xl border border-white/10" onerror="this.onerror=null;this.style.display='none'">` : ''}
                         <div class="rich-editor-content text-xs sm:text-sm text-sunset-200/85 leading-relaxed space-y-2">${n.body}</div>
                     </div>
                 </article>
@@ -5726,6 +5789,10 @@
             const htmlBody = richArea ? richArea.innerHTML.trim() : '';
             if (!htmlBody) {
                 showToast('Введите текст новости в редактор!');
+                return;
+            }
+            if (isExpiringDiscordUrl(document.getElementById('ownerNewsImageInput').value)) {
+                showToast('Ссылки на вложения Discord перестают работать через сутки — загрузите обложку файлом');
                 return;
             }
             projectNewsStore.unshift({
@@ -6188,16 +6255,20 @@
         function renderProfileCharacters() {
             const grid = document.getElementById('profileCharactersGrid');
             if (!grid) return;
+            if (!userProfileCharacters.length) {
+                grid.innerHTML = `<div class="sm:col-span-2 p-5 rounded-2xl bg-dusk-950/60 border border-dashed border-white/15 text-xs text-sunset-200/75 leading-relaxed">Персонажей пока нет. Зайдите на игровой сервер — после синхронизации ваши персонажи появятся здесь автоматически.</div>`;
+                return;
+            }
             grid.innerHTML = userProfileCharacters.map((ch, idx) => {
                 const isSel = idx === activeProfileCharIdx;
                 return `
                     <div onclick="selectProfileCharacter(${idx})" class="cursor-pointer p-4 rounded-2xl transition-all ${isSel ? 'bg-gradient-to-br from-rosewood-500/30 to-sunset-500/20 border-2 border-sunset-400 shadow-lg' : 'bg-dusk-950/70 border border-white/10 hover:border-white/25'} space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] font-mono ${isSel ? 'text-sunset-300' : 'text-sunset-200/60'}">${isSel ? '● АКТИВНЫЙ СЛОТ' : 'НАЖМИТЕ ДЛЯ ВЫБОРА'}</span>
-                            <span class="text-[10px] font-mono text-emerald-300">${ch.playtime}</span>
+                            <span class="text-[10px] font-mono text-emerald-300">${escapeHtml(ch.playtime)}</span>
                         </div>
-                        <div class="font-display font-bold text-base text-white">${ch.name}</div>
-                        <div class="text-xs text-sunset-200/75">${ch.roleDesc}</div>
+                        <div class="font-display font-bold text-base text-white">${escapeHtml(ch.name)}</div>
+                        <div class="text-xs text-sunset-200/75">${escapeHtml(ch.roleDesc)}</div>
                     </div>
                 `;
             }).join('');
@@ -6720,11 +6791,12 @@
         // МАГАЗИН ЗА БАЛЛЫ АДМИНИСТРАТОРА (ВКЛАДКА «НАГРАЖДЕНИЕ»)
         const adminShopProfessionsCatalog = [
             { id: 'prof_astro', category: 'Специализация', title: 'Астромеханик', rubPrice: '350 ₽', pointsCost: 700, desc: 'Технический дроид-специалист для ремонта и взлома терминалов.' },
-            { id: 'prof_youngling', category: 'Орден Джедаев', title: 'Юнлинг', rubPrice: '400 ₽', pointsCost: 800, desc: 'Младший ученик Ордена Джедаев, постигающий основы Силы.' },
-            { id: 'prof_padawan', category: 'Орден Джедаев', title: 'Падаван', rubPrice: '600 ₽', pointsCost: 1200, desc: 'Ученик рыцаря-джедая, участвующий в боевых операциях ВАР.' },
-            { id: 'prof_merc', category: 'Контрактник', title: 'Свободный наемник', rubPrice: '700 ₽', pointsCost: 1400, desc: 'Вольный стрелок в секторе Дантуин с доступом к контрактам.' },
-            { id: 'prof_master', category: 'Орден Джедаев', title: 'Мастер', rubPrice: '850 ₽', pointsCost: 1700, desc: 'Могущественный Мастер-Джедай, генерал Великой Армии Республики.' },
-            { id: 'prof_commando', category: 'Спецназ ВАР', title: 'Республиканский коммандос', rubPrice: '850 ₽', pointsCost: 1700, desc: 'Элитный боец спецподразделения в броне «Катарн» с DC-17m.' }
+            { id: 'prof_youngling', category: 'Орден Джедаев', title: 'Юнлинг', rubPrice: '1 000 ₽', pointsCost: 2000, desc: 'Младший ученик Ордена Джедаев, постигающий основы Силы.' },
+            { id: 'prof_padawan', category: 'Орден Джедаев', title: 'Падаван', rubPrice: '1 500 ₽', pointsCost: 3000, desc: 'Ученик рыцаря-джедая, участвующий в боевых операциях ВАР.' },
+            { id: 'prof_knight', category: 'Орден Джедаев', title: 'Рыцарь-джедай', rubPrice: '2 000 ₽', pointsCost: 4000, desc: 'Полноправный рыцарь Ордена, ведущий бойцов ВАР в бой.' },
+            { id: 'prof_master', category: 'Орден Джедаев', title: 'Мастер-джедай', rubPrice: '3 000 ₽', pointsCost: 6000, desc: 'Могущественный Мастер-Джедай, генерал Великой Армии Республики.' },
+            { id: 'prof_merc', category: 'Контрактник', title: 'Свободный наёмник', rubPrice: '1 000 ₽', pointsCost: 2000, desc: 'Вольный стрелок в секторе Дантуин с доступом к контрактам.' },
+            { id: 'prof_commando', category: 'Спецназ ВАР', title: 'Республиканский коммандос', rubPrice: '5 000 ₽', pointsCost: 10000, desc: 'Элитный боец спецподразделения в броне «Катарн» с DC-17m.' }
         ];
 
         const adminShopExtrasCatalog = [
@@ -8372,6 +8444,7 @@
             too_many: 'Слишком часто — подождите пару минут',
             too_large: 'Скриншоты слишком тяжёлые — уберите часть',
             too_many_photos: `Не больше ${UNIT_REPORT_MAX_PHOTOS} скриншотов`,
+            bad_character: 'Этот персонаж не числится в подразделении на сервере',
             bad_photo: 'Формат скриншота не поддерживается (нужен JPG, PNG, WEBP или GIF)',
             empty_fields: 'Заполните тему и изложение рапорта',
             no_signature: 'Укажите расшифровку подписи',
@@ -8398,6 +8471,10 @@
         function getReportCharacters() {
             const u = EOW_AUTH.user;
             if (!u) return [];
+            // 0) персонажи с игрового сервера — главный источник
+            if (typeof gameSync !== 'undefined' && gameSync.available) {
+                return gameSync.characters.map(c => ({ name: c.name, unitKey: c.unit || unitKeyFromDivision(c.unitTitle), unitTitle: c.unitTitle || 'Без подразделения' }));
+            }
             const list = [];
             // 1) бойцы из составов корпусов, привязанные к SteamID игрока (поле steamId64 или steamId)
             Object.keys(factionRostersDatabase || {}).forEach(corpsKey => {
@@ -8490,6 +8567,10 @@
             const counter = document.getElementById('repCounter');
             const note = (html) => { box.innerHTML = `<div class="lg:col-span-2 p-6 rounded-3xl bg-dusk-950/60 border border-dashed border-white/15 text-center text-xs text-sunset-200/70 leading-relaxed">${html}</div>`; };
             let list = [];
+            if (linked && !active) {
+                if (counter) counter.textContent = '';
+                return note('У вас пока нет персонажей. Зайдите на игровой сервер — после синхронизации персонажи и рапорта подразделения появятся здесь.');
+            }
             if (linked && active) {
                 const st = unitReportsState[active.unitKey];
                 if (!unitReportsByUnit[active.unitKey]) {
@@ -8747,12 +8828,350 @@
             showToast(`Рапорт «${subject}» отправлен: ${unitReportAddr(addressee).title}`);
         }
 
+        // ===================== ВКЛАДКА «ДОНАТ» =====================
+        const DONATE_PROFESSIONS = [
+            { tag: 'Специализация', title: 'Астромеханик', price: 350 },
+            { tag: 'Орден Джедаев', title: 'Юнлинг', price: 1000 },
+            { tag: 'Орден Джедаев', title: 'Падаван', price: 1500 },
+            { tag: 'Орден Джедаев', title: 'Рыцарь-джедай', price: 2000 },
+            { tag: 'Орден Джедаев', title: 'Мастер-джедай', price: 3000 },
+            { tag: 'Контрактник', title: 'Свободный наёмник', price: 1000 },
+            { tag: 'Спецназ ВАР', title: 'Республиканский коммандос', price: 5000, hot: true },
+        ];
+        const DONATE_WEAPON_CASES = [
+            { title: 'Тяжёлый кейс', price: 400, items: 'Z-6, RPS-6, T-20, DLT-16 и редкие тяжёлые образцы' },
+            { title: 'Снайперский кейс', price: 375, items: 'DC-15x, IQA-11, NT-220, WESTAR M5 Sniper и др.' },
+            { title: 'Пистолетный кейс', price: 350, items: 'DC-17, DC-17s, акимбо DC-17 и др.' },
+            { title: 'Оружейный кейс', price: 300, items: 'Всего понемногу: от DC-10 до Z-6 Chaingun' },
+        ];
+        const DONATE_SERVICES = [
+            { title: 'Персональная ветка прокачки', price: 'по договорённости', needsProf: false, desc: 'Своя ветка навыков под вашего персонажа: активные и пассивные навыки со своими эффектами, анимациями и звуками, прокачка в игре.' },
+            { title: 'Вооружение', price: 'индивидуально', needsProf: false, desc: 'Дополнительное оружие персонажу. Цена зависит от типа оружия и его характеристик.' },
+            { title: 'Добавление модельки', price: 'индивидуально', needsProf: false, desc: 'Персональная модель на сервер. Стоимость определяется весом и сложностью модели.' },
+            { title: 'HP / Armor', price: 'индивидуально', needsProf: true, desc: 'Здоровье или броня пакетами по 10 очков. Действуют ограничения по максимальным значениям.' },
+        ];
+        const fmtRub = n => n.toLocaleString('ru-RU').replace(/ /g, ' ') + ' ₽';
+
+        function openDonateBuy(title, price) {
+            openModal(`Покупка: ${title} (${price})`, `Чтобы приобрести «${title}», напишите донат-менеджеру @ОС | Tenkara в Discord проекта. Он зачислит донат на ваш аккаунт или оформит услугу. Кейсы покупаются в игре за донат — !магазин.`);
+        }
+        function openDonateRules() {
+            switchTab('rules');
+            setTimeout(() => selectRulesDocument('donate'), 60);
+        }
+
+        function renderDonateTab() {
+            const prof = document.getElementById('donateProfessionsGrid');
+            if (prof) prof.innerHTML = DONATE_PROFESSIONS.map(p => `
+                <div class="soft-card rounded-3xl p-5 flex flex-col justify-between gap-4 ${p.hot ? 'border border-sunset-400/40' : ''}">
+                    <div class="space-y-2">
+                        <span class="px-3 py-1 rounded-full ${p.hot ? 'bg-sunset-500/20 border border-sunset-400/30' : 'bg-white/5 border border-white/10'} text-[11px] text-sunset-300 font-medium">${escapeHtml(p.tag)}</span>
+                        <h4 class="font-display font-bold text-lg text-white">${escapeHtml(p.title)}</h4>
+                        <div class="font-display font-bold text-xl text-sunset-300">${fmtRub(p.price)}</div>
+                    </div>
+                    <button type="button" onclick="openDonateBuy('${escapeHtml(p.title)}', '${fmtRub(p.price)}')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Приобрести</button>
+                </div>`).join('');
+            const cases = document.getElementById('donateWeaponCasesGrid');
+            if (cases) cases.innerHTML = DONATE_WEAPON_CASES.map(c => `
+                <div class="soft-card rounded-3xl p-5 space-y-2">
+                    <div class="flex items-start justify-between gap-3">
+                        <h4 class="font-display font-bold text-base text-white">${escapeHtml(c.title)}</h4>
+                        <span class="font-display font-bold text-lg text-sunset-300 whitespace-nowrap">${fmtRub(c.price)}</span>
+                    </div>
+                    <p class="text-xs text-sunset-200/75 leading-relaxed">${escapeHtml(c.items)}</p>
+                </div>`).join('');
+            const svc = document.getElementById('donateServicesGrid');
+            if (svc) svc.innerHTML = DONATE_SERVICES.map(s => `
+                <div class="soft-card rounded-3xl p-6 flex flex-col justify-between gap-4">
+                    <div class="space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="px-3 py-1 rounded-full ${s.needsProf ? 'bg-rosewood-500/25 text-rosewood-300' : 'bg-emerald-500/15 text-emerald-300'} text-[10px] font-mono">${s.needsProf ? 'ТРЕБУЕТСЯ ЛИЧНАЯ ПРОФЕССИЯ' : 'БЕЗ ЛИЧНОЙ ПРОФЕССИИ'}</span>
+                            <span class="text-xs font-mono text-sunset-300">${escapeHtml(s.price)}</span>
+                        </div>
+                        <h4 class="font-display font-bold text-lg text-white">${escapeHtml(s.title)}</h4>
+                        <p class="text-xs text-sunset-200/80 leading-relaxed">${escapeHtml(s.desc)}</p>
+                    </div>
+                    <button type="button" onclick="openDonateBuy('${escapeHtml(s.title)}', '${escapeHtml(s.price)}')" class="w-full py-2.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs">Обсудить с менеджером</button>
+                </div>`).join('');
+            renderDonateBalance();
+            refreshIcons();
+        }
+        function renderDonateBalance() {
+            const card = document.getElementById('donateBalanceCard');
+            if (!card) return;
+            const bal = EOW_AUTH.user && gameSync.account ? gameSync.account.donateBalance : null;
+            card.classList.toggle('hidden', bal == null);
+            const v = document.getElementById('donateBalanceValue');
+            if (v && bal != null) v.textContent = Number(bal).toLocaleString('ru-RU');
+        }
+
+        // ===================== ДАННЫЕ С ИГРОВОГО СЕРВЕРА (персонажи, баланс доната) =====================
+        // Сервер GMod сам отправляет данные на сервер сайта; здесь игрок получает только СВОИХ персонажей.
+        const gameSync = { forUser: null, available: false, characters: [], account: null };
+        const DEMO_PROFILE_CHARACTERS = userProfileCharacters.slice();
+        const fmtHours = s => Math.floor((s | 0) / 3600).toLocaleString('ru-RU') + ' ч.';
+        const fmtNum = n => Number(n || 0).toLocaleString('ru-RU');
+
+        function gameCharToProfile(c) {
+            const unitTitle = c.unitTitle || 'Без подразделения';
+            return {
+                name: c.name, unitKey: c.unit || unitKeyFromDivision(unitTitle),
+                roleDesc: [c.profession || c.rank, unitTitle].filter(Boolean).join(' · '),
+                level: c.level ? `${c.level} ур.` : '—',
+                playtime: fmtHours(c.playtime),
+                reputation: `Репутация: ${c.reputation > 0 ? '+' : ''}${c.reputation | 0}`,
+                events: c.deaths != null ? `${fmtNum(c.deaths)} смертей` : '—',
+                joined: c.joined ? 'В строю с ' + new Date(c.joined * 1000).toLocaleDateString('ru-RU') : '—',
+                kills: `${fmtNum(c.kills)} ед.`,
+                rank: c.rank || '—',
+                credits: `${fmtNum(c.credits)} CR`,
+                division: unitTitle,
+                vitals: c.profession || '—',
+                discipline: `${c.reprimands | 0} выговоров`,
+                clearance: c.updatedAt ? 'Обновлено ' + new Date(c.updatedAt * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+            };
+        }
+
+        function applyGameCharacters() {
+            const list = gameSync.available && EOW_AUTH.user ? gameSync.characters.map(gameCharToProfile) : DEMO_PROFILE_CHARACTERS;
+            userProfileCharacters.splice(0, userProfileCharacters.length, ...list);
+            if (activeProfileCharIdx >= userProfileCharacters.length) activeProfileCharIdx = 0;
+            try {
+                renderProfileCharacters();
+                if (userProfileCharacters.length) selectProfileCharacter(activeProfileCharIdx);
+                renderUnitReportsTab();
+                renderDonateBalance();
+            } catch (e) { console.warn('game characters', e); }
+        }
+
+        async function loadGameData() {
+            const u = EOW_AUTH.user;
+            const key = u ? u.steamId64 : null;
+            if (gameSync.forUser === key) return;
+            gameSync.forUser = key;
+            gameSync.available = false; gameSync.characters = []; gameSync.account = null;
+            if (!u || !EOW_AUTH_API) { applyGameCharacters(); return; }
+            try {
+                const d = await eowApi('/api/me/game');
+                if (gameSync.forUser !== key) return;
+                gameSync.available = true;
+                gameSync.characters = Array.isArray(d.characters) ? d.characters : [];
+                gameSync.account = d.account || null;
+            } catch (e) {
+                if (e.status !== 404) gameSync.forUser = null;   // 404 — старая версия сервера: остаёмся на демо
+            }
+            applyGameCharacters();
+        }
+
+        // ===================== ЗАГРУЗКА КАРТИНОК НА СЕРВЕР САЙТА =====================
+        // Ссылки на вложения Discord (cdn.discordapp.com/attachments/...?ex=...) живут ~сутки — потом картинка пропадает.
+        const isExpiringDiscordUrl = u => /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\/(attachments|ephemeral-attachments)\//i.test(String(u || ''));
+        async function uploadSiteMedia(blob) {
+            if (!EOW_AUTH_API || !EOW_AUTH.user || !blob) return null;
+            try {
+                const fd = new FormData();
+                const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+                fd.append('file', blob, 'image.' + ext);
+                const res = await fetch(EOW_AUTH_API.replace(/\/+$/, '') + '/api/media', { method: 'POST', headers: { Authorization: 'Bearer ' + (lsGet(EOW_TOKEN_KEY) || '') }, body: fd });
+                const data = await res.json().catch(() => null);
+                return res.ok && data && /^https:\/\//.test(data.url || '') ? data.url : null;
+            } catch (e) { return null; }
+        }
+        async function uploadSiteMediaFromDataUrl(dataUrl) {
+            try { return await uploadSiteMedia(await (await fetch(dataUrl)).blob()); } catch (e) { return null; }
+        }
+        function compressImageFile(file, max = 1600) {
+            return new Promise(resolve => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+                    const c = document.createElement('canvas');
+                    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    URL.revokeObjectURL(url);
+                    c.toBlob(b => b ? resolve(b) : c.toBlob(resolve, 'image/jpeg', 0.85), 'image/webp', 0.85);
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+                img.src = url;
+            });
+        }
+        async function uploadNewsCover(input) {
+            const file = input.files && input.files[0];
+            input.value = '';
+            if (!file) return;
+            if (!/^image\//.test(file.type)) { showToast('Выберите картинку'); return; }
+            const status = document.getElementById('ownerNewsImageStatus');
+            if (status) status.textContent = 'Загрузка…';
+            const blob = file.type === 'image/gif' && file.size < 1400000 ? file : await compressImageFile(file);
+            const url = blob && await uploadSiteMedia(blob);
+            if (!url) { if (status) status.textContent = ''; showToast('Не удалось загрузить картинку на сервер сайта'); return; }
+            const inp = document.getElementById('ownerNewsImageInput');
+            if (inp) inp.value = url;
+            if (status) status.textContent = 'Загружено ✓';
+            showToast('Обложка загружена на сервер сайта');
+        }
+        function checkNewsCoverUrl(inp) {
+            const warn = document.getElementById('ownerNewsImageStatus');
+            const bad = isExpiringDiscordUrl(inp.value);
+            if (warn) { warn.textContent = bad ? 'Ссылка Discord протухнет через сутки — загрузите файл кнопкой «Файл»' : ''; warn.classList.toggle('text-amber-300', bad); }
+        }
+
+        // ===================== ВЫПАДАЮЩИЕ СПИСКИ В СТИЛЕ САЙТА =====================
+        // Работает для всех <select> на сайте (включая созданные позже): вместо системного списка
+        // открывается свой. На сенсорных экранах остаётся родной выбор — он там удобнее.
+        (function initEowSelects() {
+            const coarse = () => window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+            let st = null; // { sel, pop, items, hl }
+            const usable = (sel) => sel && sel.tagName === 'SELECT' && !sel.multiple && !(sel.size > 1) && !sel.disabled && !coarse();
+
+            function close(focusBack) {
+                if (!st) return;
+                const { sel, pop } = st;
+                sel.classList.remove('eow-sel-open');
+                sel.removeAttribute('aria-expanded');
+                pop.remove();
+                st = null;
+                window.removeEventListener('resize', onWin, true);
+                window.removeEventListener('scroll', onScroll, true);
+                if (focusBack) sel.focus({ preventScroll: true });
+            }
+            const onWin = () => close(false);
+            const onScroll = (e) => { if (st && !st.pop.contains(e.target)) close(false); };
+
+            function choose(i) {
+                if (!st) return;
+                const { sel, items } = st;
+                const it = items[i];
+                if (!it || it.opt.disabled) return;
+                const changed = sel.selectedIndex !== it.opt.index;
+                sel.selectedIndex = it.opt.index;
+                close(false);
+                if (changed) {
+                    sel.dispatchEvent(new Event('input', { bubbles: true }));
+                    sel.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            function highlight(i, scroll) {
+                if (!st) return;
+                st.items.forEach((it, k) => it.el.classList.toggle('hl', k === i));
+                st.hl = i;
+                if (scroll && st.items[i]) st.items[i].el.scrollIntoView({ block: 'nearest' });
+            }
+            function move(delta) {
+                if (!st) return;
+                const n = st.items.length;
+                let i = st.hl;
+                for (let step = 0; step < n; step++) {
+                    i = i < 0 ? (delta > 0 ? 0 : n - 1) : Math.min(n - 1, Math.max(0, i + delta));
+                    if (!st.items[i].opt.disabled) break;
+                }
+                highlight(i, true);
+            }
+
+            function open(sel) {
+                close(false);
+                const pop = document.createElement('div');
+                pop.className = 'eow-sel-pop';
+                pop.setAttribute('role', 'listbox');
+                const items = [];
+                const addOpt = (opt) => {
+                    if (opt.hidden) return;
+                    const el = document.createElement('div');
+                    el.className = 'eow-sel-opt' + (opt.selected ? ' sel' : '') + (opt.disabled ? ' dis' : '');
+                    el.setAttribute('role', 'option');
+                    el.textContent = opt.textContent;
+                    const idx = items.length;
+                    el.addEventListener('mousemove', () => { if (st && st.hl !== idx) highlight(idx, false); });
+                    el.addEventListener('mousedown', (e) => e.preventDefault());
+                    el.addEventListener('click', () => choose(idx));
+                    items.push({ el, opt });
+                    pop.appendChild(el);
+                };
+                [...sel.children].forEach(ch => {
+                    if (ch.tagName === 'OPTGROUP') {
+                        const g = document.createElement('div');
+                        g.className = 'eow-sel-group'; g.textContent = ch.label;
+                        pop.appendChild(g);
+                        [...ch.children].forEach(addOpt);
+                    } else if (ch.tagName === 'OPTION') addOpt(ch);
+                });
+                if (!items.length) return;
+                pop.addEventListener('mousedown', (e) => e.preventDefault());
+                document.body.appendChild(pop);
+
+                const r = sel.getBoundingClientRect();
+                const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+                pop.style.minWidth = Math.max(160, r.width) + 'px';
+                pop.style.maxWidth = Math.min(420, vw - 16) + 'px';
+                const ph = pop.offsetHeight, pw = pop.offsetWidth;
+                const below = vh - r.bottom - 8, above = r.top - 8;
+                const up = ph > below && above > below;
+                pop.classList.toggle('up', up);
+                pop.style.top = (up ? Math.max(8, r.top - ph - 6) : Math.min(vh - ph - 8, r.bottom + 6)) + 'px';
+                pop.style.left = Math.max(8, Math.min(r.left, vw - pw - 8)) + 'px';
+
+                sel.classList.add('eow-sel-open');
+                sel.setAttribute('aria-expanded', 'true');
+                st = { sel, pop, items, hl: -1 };
+                const cur = items.findIndex(it => it.opt.selected);
+                highlight(cur, true);
+                window.addEventListener('resize', onWin, true);
+                window.addEventListener('scroll', onScroll, true);
+            }
+
+            document.addEventListener('mousedown', (e) => {
+                const sel = e.target.closest && e.target.closest('select');
+                if (st && !st.pop.contains(e.target) && sel !== st.sel) close(false);
+                if (!usable(sel) || e.button !== 0) return;
+                e.preventDefault();               // не даём открыться системному списку (и не уводим фокус из редактора)
+                if (st && st.sel === sel) { close(false); return; }
+                open(sel);
+            }, true);
+
+            document.addEventListener('keydown', (e) => {
+                if (st) {
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); move(1); return; }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); return; }
+                    if (e.key === 'Home') { e.preventDefault(); st.hl = -1; move(1); return; }
+                    if (e.key === 'End') { e.preventDefault(); st.hl = st.items.length; move(-1); return; }
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const s = st.sel; choose(st.hl); s.focus({ preventScroll: true }); return; }
+                    if (e.key === 'Tab') { close(false); return; }
+                    if (e.key.length === 1) {
+                        const q = e.key.toLowerCase();
+                        const n = st.items.length;
+                        for (let k = 1; k <= n; k++) {
+                            const i = (st.hl + k) % n;
+                            if (!st.items[i].opt.disabled && st.items[i].opt.textContent.trim().toLowerCase().startsWith(q)) { highlight(i, true); break; }
+                        }
+                    }
+                    return;
+                }
+                const sel = e.target;
+                if (!usable(sel)) return;
+                if (e.key === 'Enter' || e.key === ' ' || (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) || e.key === 'F4') {
+                    e.preventDefault(); open(sel);
+                }
+            }, true);
+        })();
+
+        // колесо мыши прокручивает панели вкладок по горизонтали
+        document.querySelectorAll('.eow-tabs-scroll').forEach(nav => {
+            nav.addEventListener('wheel', (e) => {
+                if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || nav.scrollWidth <= nav.clientWidth) return;
+                e.preventDefault();
+                nav.scrollLeft += e.deltaY;
+            }, { passive: false });
+        });
+
         applyCachedContent();
         renderFactionCards();
         renderPublicDocumentationSection();
         renderPublicNewsFeed();
         renderOwnerNewsManageList();
         renderUnitReportsTab();
+        renderDonateTab();
         renderProfileCharacters();
         renderGalacticMap();
         initRustMap();
