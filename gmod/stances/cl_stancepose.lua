@@ -321,7 +321,9 @@ end
 
 -- переход между позами: from -> to за BlendTime; смену цели посреди перехода начинаем из текущей смеси
 function SP.Update(ply, now, dur)
-    local id = ply:Alive() and ply:GetNW2String("FusionStance", "") or ""
+    -- указывает рукой (G) или сидит в транспорте — позу рук не держим, отдаём руки анимации/указанию
+    local free = ply:Alive() and not ply:InVehicle() and not ply:GetNW2Bool("EOWPoint", false)
+    local id = free and ply:GetNW2String("FusionStance", "") or ""
     local def = S.ById and S.ById[id]
     local want = (def and def.pose and SP.Mats[id]) and id or nil
     local s = ply.eowStancePose
