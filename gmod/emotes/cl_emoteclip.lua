@@ -7,8 +7,8 @@
     Что играть, решают:
       • стойка из кругового меню с полем clip (sh_stances.lua) — сервер ставит FusionStance;
       • сидение (Alt + E, sv_emotes.lua) — игрок в невидимом сиденье с меткой EOWSit;
-      • упражнение пресса — повтор идёт, только когда игрок попал по клавише (мини-игра ниже),
-        иначе персонаж лежит в исходном положении.
+      • упражнения (пресс, приседания) — повтор идёт, только когда игрок попал по клавише
+        (мини-игра ниже), иначе персонаж остаётся в исходном положении.
     Вход и выход из анимации плавные (S.Settings.BlendTime), смена одной эмоции на другую — сразу
     из позы в позу.
 ]]
@@ -512,8 +512,9 @@ end)
 
 
 -----------------------------------------------------------
--- УПРАЖНЕНИЕ ПРЕССА: мини-игра. На экране загорается одна из клавиш W A S D — успел нажать её —
--- персонаж делает повтор; промахнулся или не успел — лежит в исходном положении.
+-- УПРАЖНЕНИЯ (стойки с reps: пресс, приседания): мини-игра. На экране загорается одна из клавиш
+-- W A S D — успел нажать её — персонаж делает повтор; промахнулся или не успел — остаётся в
+-- исходном положении (лежит / стоит).
 -----------------------------------------------------------
 local KEYS = { W = KEY_W, A = KEY_A, S = KEY_S, D = KEY_D }
 local ORDER = { "W", "A", "S", "D" }
@@ -524,6 +525,11 @@ local function situpsActive(lp)
     local id = lp:GetNW2String("FusionStance", "")
     local def = id ~= "" and S.ById and S.ById[id]
     return def and def.reps and def or nil
+end
+-- длительность одного повтора — по клипу упражнения
+local function repLen(def)
+    local c = EC.Clips and EC.Clips[def.clip]
+    return (c and c.len) or def.replen or (EM.Situps and EM.Situps.Len) or 2.27
 end
 
 local function canType()
@@ -551,7 +557,8 @@ hook.Add("Think", "EOWSitups.Game", function()
         if d and not MG.down[n] and canType() then pressed = pressed or n end
         MG.down[n] = d
     end
-    local repLeft = (lp:GetNW2Float("EOWRepT", 0) + (cfg.Len or 2.27)) - CurTime()
+    local len = repLen(def)
+    local repLeft = (lp:GetNW2Float("EOWRepT", 0) + len) - CurTime()
     if not MG.key then
         if now >= MG.next and repLeft <= 0.05 then
             local pick = ORDER[math.random(1, 4)]
@@ -564,7 +571,7 @@ hook.Add("Think", "EOWSitups.Game", function()
         if pressed == MG.key then
             netstream.Start("EOWSitups.Rep")
             MG.flash = { ok = true, t = now, key = MG.key }
-            MG.key, MG.next = nil, now + (cfg.Len or 2.27) + 0.1
+            MG.key, MG.next = nil, now + len + 0.1
             surface.PlaySound("buttons/button14.wav")
         else
             MG.flash = { ok = false, t = now, key = MG.key }
@@ -590,7 +597,8 @@ end
 local RED, DARK, GOOD = Color(214, 37, 34), Color(16, 4, 8, 225), Color(70, 200, 110)
 hook.Add("HUDPaint", "EOWSitups.Game", function()
     local lp = LocalPlayer()
-    if not IsValid(lp) or not MG.on or not situpsActive(lp) then return end
+    local def = IsValid(lp) and MG.on and situpsActive(lp)
+    if not def then return end
     makeFonts()
     local now = RealTime()
     local W, H = ScrW(), ScrH()
@@ -602,7 +610,7 @@ hook.Add("HUDPaint", "EOWSitups.Game", function()
     draw.RoundedBox(6, bx, by, boxW, boxH, DARK)
     surface.SetDrawColor(RED.r, RED.g, RED.b, 200)
     surface.DrawRect(bx, by, boxW, 2)
-    draw.SimpleText("УПРАЖНЕНИЕ ПРЕССА", "EOWSitups.Title", cx, by + 14, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
+    draw.SimpleText(def.hud or def.name or "УПРАЖНЕНИЕ", "EOWSitups.Title", cx, by + 14, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP)
     -- клавиши крестом: W сверху, A S D снизу
     local pos = { W = { cx - ks / 2, top }, A = { cx - ks * 1.5 - gap, top + ks + gap }, S = { cx - ks / 2, top + ks + gap }, D = { cx + ks / 2 + gap, top + ks + gap } }
     local fl = MG.flash and (now - MG.flash.t < 0.45) and MG.flash or nil

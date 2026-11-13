@@ -3,8 +3,9 @@
       • СЕСТЬ на поверхность: Alt + E. Навёл камеру на верх стула, ящика, скамьи или уступа —
         персонаж садится лицом к тому месту, где стоял. Встать — E или пробел.
         Игрок сидит в невидимом сиденье; позу сидя рисует cl_emoteclip.lua (клип sit).
-      • УПРАЖНЕНИЕ ПРЕССА: клиент сообщает о попадании по клавише — сервер засчитывает повтор,
-        и все видят, как персонаж его делает.
+        Навёл на пол у ног — персонаж садится на землю (стойка «Сидеть на земле»).
+      • УПРАЖНЕНИЯ (пресс, приседания): клиент сообщает о попадании по клавише — сервер
+        засчитывает повтор, и все видят, как персонаж его делает.
       • ACT SALUTE: вместо жеста движка — своё воинское приветствие (стойка salute).
     Настройки — sh_emotes.lua.
 ]]
@@ -26,7 +27,7 @@ local SAY = {
     far = "Подойди ближе, чтобы сесть",
     flat = "Сесть можно только на ровный верх",
     high = "Слишком высоко, чтобы сесть",
-    low = "Слишком низко — на полу можно сесть через круговое меню",
+    low = "Слишком низко, чтобы сесть",
     room = "Над этим местом мало места",
     ent = "На это сесть нельзя",
     see = "Не видно, куда садиться",
@@ -158,6 +159,15 @@ netstream.Hook("EOWSit.Req", function(ply, pos)
     if not ply:Alive() or ply:InVehicle() or not ply:OnGround() or ply:WaterLevel() >= 2 then return end
     if (ply.eowSitNext or 0) > CurTime() then return end
     ply.eowSitNext = CurTime() + EM.Sit.Cooldown
+    -- пол у ног — сесть на землю на месте (поза «Сидеть на земле», лицом туда, куда смотрит)
+    local fl = util.TraceLine({ start = pos + Vector(0, 0, 8), endpos = pos - Vector(0, 0, 16), filter = ply, mask = MASK_SOLID })
+    if fl.Hit and not fl.StartSolid and fl.HitNormal.z >= EM.Sit.MinNormalZ then
+        local up = fl.HitPos.z - ply:GetPos().z
+        if up < EM.Sit.MinUp and up > -(EM.Sit.FloorBelow or 12) then
+            if S.Start and S.ById and S.ById.groundsit then S.Start(ply, "groundsit") end
+            return
+        end
+    end
     local tr, why = sitCheck(ply, pos)
     if tr then EOWSit.Sit(ply, tr) else EOWSit.Say(ply, why) end
 end)
@@ -208,7 +218,7 @@ end)
 
 
 -----------------------------------------------------------
--- УПРАЖНЕНИЕ ПРЕССА: попадание по клавише = один повтор (видят все)
+-- УПРАЖНЕНИЯ: попадание по клавише = один повтор (видят все)
 -----------------------------------------------------------
 netstream.Hook("EOWSitups.Rep", function(ply)
     if not IsValid(ply) or not ply:Alive() then return end
@@ -216,7 +226,7 @@ netstream.Hook("EOWSitups.Rep", function(ply)
     local st = S.ById and S.ById[id]
     if not st or not st.reps then return end
     local now = CurTime()
-    if now - ply:GetNW2Float("EOWRepT", 0) < (EM.Situps.Len or 2.27) * 0.9 then return end
+    if now - ply:GetNW2Float("EOWRepT", 0) < (st.replen or EM.Situps.Len or 2.27) * 0.9 then return end
     ply:SetNW2Float("EOWRepT", now)
     ply:SetNW2Int("EOWReps", ply:GetNW2Int("EOWReps", 0) + 1)
 end)
